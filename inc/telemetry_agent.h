@@ -13,6 +13,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifndef __TELEMETRY_AGENT_H__
+#define __TELEMETRY_AGENT_H__
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -76,3 +78,4 @@ extern int unregister_telemetry_agent_ops(struct telemetry_agent_ops *agent_ops)
 void telemetry_agent_stats_work(struct work_struct *work);
 int telemetry_agent_register_umac_ops(void);
 int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj);
+#endif /* __TELEMETRY_AGENT_H__ */

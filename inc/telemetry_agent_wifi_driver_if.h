@@ -13,7 +13,10 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifndef __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__
+#define __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__
 
+#include "telemetry_agent_app_if.h"
 struct agent_config_params {
     int command;
     int value;
@@ -55,3 +58,50 @@ struct telemetry_agent_ops {
 	void (*agent_notify_app_init) (void);
 };
 
+struct t2lm_of_tids {
+	enum t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
+	uint8_t default_link_mapping;
+	uint16_t t2lm_provisioned_links[NUM_TIDS]; /*Bit0 for link0, bit1 for link1 and so on*/
+};
+
+struct eht_peer_caps {
+	uint32_t tx_mcs_nss_map[EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint32_t rx_mcs_nss_map[EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+};
+
+struct agent_peer_iface_init_obj {
+	uint8_t peer_mld_mac[6];
+	uint8_t peer_link_mac[6];
+	uint8_t link_id;
+	uint8_t soc_id;
+	uint8_t bw;
+	uint8_t freq;
+	uint8_t rssi;
+	struct t2lm_of_tids t2lm_info[T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
+	uint8_t link_tx_power;              /* Tx power of the STA */
+	uint8_t psd_flag;                   /* Is PSD channel or not */
+	uint8_t psd_eirp;    /* PSD power level */
+	struct eht_peer_caps caps;          /* Peer capabilities */
+};
+
+struct agent_pdev_iface_init_obj {
+	/* This info is stroed in telemetry pdev object,
+	 * so this can be ignored for now
+	 */
+	uint8_t link_id;
+	uint8_t soc_id;
+	uint8_t band;
+};
+
+struct agent_psoc_iface_init_obj {
+	uint8_t soc_id;
+	uint16_t max_peers;
+	uint16_t num_peers;
+
+};
+
+int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
+int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);
+int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats);
+
+#endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */

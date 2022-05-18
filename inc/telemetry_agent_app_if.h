@@ -13,10 +13,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifndef __TELEMETRY_AGENT_APP_IF_H__
+#define __TELEMETRY_AGENT_APP_IF_H__
 
 #define MAX_SOCS 3
 #define MAX_PDEV_LINKS 2
-#define MAX_MLD_LINKS 4
+#define MAX_MLD_LINKS 2
 #define MAX_PEERS 128
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
@@ -41,15 +43,15 @@ struct telemetry_agent_header {
 } __attribute__ ((__packed__));
 
 
-enum link_band_caps {
-	LINK_BAND_2GHz,
-	LINK_BAND_5GHz,
-	LINK_BAND_5GHz_LOW,
-	LINK_BAND_5GHz_HIGH,
-	LINK_BAND_6Ghz,
-	LINK_BAND_6Ghz_LOW,
-	LINK_BAND_6GHz_HIGH,
-	LINK_BAND_INVALID,
+enum t2lm_band_caps {
+	T2LM_BAND_2GHz,
+	T2LM_BAND_5GHz,
+	T2LM_BAND_5GHz_LOW,
+	T2LM_BAND_5GHz_HIGH,
+	T2LM_BAND_6Ghz,
+	T2LM_BAND_6Ghz_LOW,
+	T2LM_BAND_6GHz_HIGH,
+	T2LM_BAND_INVALID,
 };
 
 enum t2lm_direction {
@@ -72,7 +74,7 @@ struct agent_peer_stats_obj {
 
 struct agent_link_stats {
 	uint8_t hw_link_id;
-	enum link_band_caps band;
+	enum t2lm_band_caps band;
 	uint8_t available_airtime;
 	uint32_t m3_stats;
 	uint32_t m4_stats;
@@ -84,7 +86,7 @@ struct agent_soc_stats {
 	uint8_t soc_id;
 	uint8_t num_peers;
 	int num_links;
-	struct agent_link_stats  link_stats[MAX_PDEV_LINKS];
+	struct agent_link_stats  link_stats[MAX_MLD_LINKS];
 };
 
 /* Periodic Stats */
@@ -118,16 +120,17 @@ struct agent_peer_init_stats {
 
 struct agent_link_init_stats {
 	uint8_t hw_link_id;
-	enum link_band_caps band;
-	int num_peers;
+	enum t2lm_band_caps band;
+	uint16_t num_peers;
 	struct agent_peer_init_stats peer_stats[MAX_PEERS];
 };
 
 struct agent_soc_init_stats {
 	uint8_t soc_id;
-	uint8_t num_peers;
-	int num_links;
-	struct agent_link_init_stats link_stats[MAX_PDEV_LINKS];
+	uint16_t num_peers;
+	uint16_t max_peers;
+	uint8_t num_links;
+	struct agent_link_init_stats link_stats[MAX_MLD_LINKS];
 };
 
 struct relayfs_init_stats {
@@ -145,3 +148,5 @@ struct telemetry_buffer {
 
 	u_int32_t   end_magic_num;
 };
+
+#endif /* __TELEMETRY_AGENT_APP_IF_H__ */
