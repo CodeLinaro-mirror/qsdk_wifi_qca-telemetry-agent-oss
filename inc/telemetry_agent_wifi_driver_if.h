@@ -100,8 +100,32 @@ struct agent_psoc_iface_init_obj {
 
 };
 
+struct agent_peer_iface_stats_obj {
+    uint8_t peer_mld_mac[6];
+    uint8_t peer_link_mac[6];
+    uint8_t link_id;
+    uint8_t airtime_consumption;
+    uint32_t tx_mpdu_retried;
+    uint32_t tx_mpdu_total;
+    uint32_t rx_mpdu_retried;
+    uint32_t rx_mpdu_total;
+    uint8_t rssi;
+};
+
+struct agent_link_iface_stats_obj {
+    uint8_t link_id;
+    uint8_t soc_id;
+    uint8_t available_airtime;
+    uint32_t congestion;
+    uint32_t tx_mpdu_failed;
+    uint32_t tx_mpdu_total;
+};
+
+
 int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
 int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);
 int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats);
 
+int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
+int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */

@@ -29,22 +29,26 @@
 #define STATUS_FAIL -1
 #define AGENT_MAX_BUFFER_SIZE 46200
 #define MAX_SUB_BUFFERS 10
-#define STATS_FREQUECY  2000 /*in milli seconds */
+#define STATS_FREQUECY  5000 /*in milli seconds */
 
 struct agent_peer_db {
     void *peer_obj_ptr;
     void *pdev_obj_ptr;
     void *psoc_obj_ptr;
     uint8_t peer_mac_addr[6];
+    uint8_t m1_stats;
+    uint8_t m2_stats;
 };
 
 struct agent_pdev_db {
     void *pdev_obj_ptr;
     void *psoc_obj_ptr;
-	uint8_t pdev_id;
-	int num_peers;
+    uint8_t pdev_id;
+    uint32_t m3_stats;
+    uint8_t m4_stats;
+    int num_peers;
 	/* FIXME: convert to list */
-	struct agent_peer_db peer_db[MAX_PEERS];
+    struct agent_peer_db peer_db[MAX_PEERS];
 };
 
 struct agent_soc_db {
@@ -67,7 +71,9 @@ struct telemetry_agent_object {
     struct rchan *rfs_channel;
     struct dentry *dir_ptr;
     /* delyed work */
-    struct delayed_work stats_work;
+    struct delayed_work stats_work_init;
+    /* delyed work periodic*/
+    struct delayed_work stats_work_periodic;
     /* pdev and peer objects */
 	struct agent_telemtry_db agent_db;
 };

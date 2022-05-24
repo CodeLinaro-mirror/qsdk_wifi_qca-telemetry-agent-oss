@@ -62,11 +62,10 @@ enum t2lm_direction {
 	T2LM_INVALID_DIRECTION,
 };
 
-struct agent_peer_stats_obj {
+struct agent_peer_stats {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
-	uint8_t tx_airtime_consumption;
-	uint8_t rx_airtime_consumption;
+	uint8_t airtime_consumption;
 	uint8_t m1_stats;
 	uint8_t m2_stats;
 	uint8_t rssi;
@@ -74,19 +73,18 @@ struct agent_peer_stats_obj {
 
 struct agent_link_stats {
 	uint8_t hw_link_id;
-	enum t2lm_band_caps band;
 	uint8_t available_airtime;
 	uint32_t m3_stats;
-	uint32_t m4_stats;
+	uint8_t m4_stats;
 	int num_peers;
-	struct agent_peer_stats_obj peer_stats[MAX_PEERS];
+	struct agent_peer_stats peer_stats[MAX_PEERS];
 };
 
 struct agent_soc_stats {
 	uint8_t soc_id;
 	uint8_t num_peers;
 	int num_links;
-	struct agent_link_stats  link_stats[MAX_MLD_LINKS];
+	struct agent_link_stats link_stats[MAX_MLD_LINKS];
 };
 
 /* Periodic Stats */
