@@ -15,6 +15,7 @@
  */
 
 #include "../inc/telemetry_agent.h"
+#include "../inc/telemetry_agent_sawf.h"
 
 struct telemetry_agent_object g_agent_obj; 
 struct telemetry_buffer stats_buffer;
@@ -386,7 +387,7 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	peer_idx = pdev_db->num_peers;
 	peer_db = &pdev_db->peer_db[peer_idx];
 
-	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
+	printk(KERN_DEBUG "Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
 			peer_obj->psoc_back_pointer, peer_obj->psoc_id,
 			peer_obj->pdev_back_pointer, peer_obj->pdev_id,
 			peer_obj->peer_back_pointer, print_mac_addr(&peer_obj->peer_mac_addr[0])
@@ -398,13 +399,13 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 
 	memcpy(&peer_db->peer_mac_addr[0], &peer_obj->peer_mac_addr[0], 6);
 
-	printk("AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
+	printk(KERN_DEBUG "AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
 			peer_db->psoc_obj_ptr, peer_obj->psoc_id,
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0])
 		  );
 
-	pdev_db->num_peers++;	
+	pdev_db->num_peers++;
 	return status;
 }
 
@@ -435,7 +436,7 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_obj *peer_obj)
 {
 	int status = STATUS_SUCCESS;
-	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
+	printk(KERN_DEBUG "Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
 			peer_obj->psoc_back_pointer, peer_obj->psoc_id,
 			peer_obj->pdev_back_pointer, peer_obj->pdev_id,
 			peer_obj->peer_back_pointer, print_mac_addr(&peer_obj->peer_mac_addr[0])
@@ -468,6 +469,21 @@ struct telemetry_agent_ops agent_ops = {
 	agent_set_param:telemetry_agent_set_param_handler,
 	agent_get_param:telemetry_agent_get_param_handler,
 	agent_notify_app_init:telemetry_agent_notify_app_init,
+
+	/* SAWF-ops */
+	sawf_set_sla_dtct_cfg: telemetry_sawf_set_sla_detect_cfg,
+	sawf_set_sla_cfg: telemetry_sawf_set_sla_cfg,
+	sawf_set_svclass_cfg: telemetry_sawf_set_svclass_cfg,
+	sawf_updt_delay_mvng: telemetry_sawf_set_mov_avg_params,
+	sawf_updt_sla_params: telemetry_sawf_set_sla_params,
+	sawf_alloc_peer: telemetry_sawf_alloc_peer,
+	sawf_updt_queue_info: telemetry_sawf_update_queue_info,
+	sawf_free_peer: telemetry_sawf_free_peer,
+	sawf_push_delay: telemetry_sawf_update_delay,
+	sawf_push_delay_mvng: telemetry_sawf_update_delay_mov_avg,
+	sawf_push_msdu_drop: telemetry_sawf_update_msdu_drop,
+	sawf_pull_rate: telemetry_sawf_get_rate,
+	sawf_pull_mov_avg: telemetry_sawf_get_mov_avg
 };
 
 static int telemetry_agent_init_module(void)

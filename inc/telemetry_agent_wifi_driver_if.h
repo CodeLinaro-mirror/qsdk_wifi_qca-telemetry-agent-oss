@@ -55,7 +55,51 @@ struct telemetry_agent_ops {
     int  (*agent_peer_destroy_handler) (void *arg, struct agent_peer_obj *peer_obj);
     int  (*agent_set_param) (struct agent_config_params *params);
     int  (*agent_get_param) (struct agent_config_params *params);
-	void (*agent_notify_app_init) (void);
+    void (*agent_notify_app_init) (void);
+
+    /* SAWF ops */
+    void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
+                               uint8_t svc_id, uint8_t hostq_id);
+    void (* sawf_free_peer) (void *telemetry_sawf_ctx);
+    int (* sawf_updt_queue_info) (void *telemetry_sawf_ctx,
+                                  uint8_t svc_id,
+                                  uint8_t tid, uint8_t msduq_idx);
+    int (* sawf_updt_delay_mvng) (uint32_t num_win, uint32_t num_pkt);
+    int (* sawf_updt_sla_params) (uint32_t num_pkt, uint32_t time_sec);
+    int (* sawf_set_sla_cfg) (uint8_t svc_id, uint8_t min_thruput_rate,
+                              uint8_t max_thruput_rate,
+                              uint8_t burst_size,
+                              uint8_t service_interval,
+                              uint8_t delay_bound, uint8_t msdu_ttl,
+                              uint8_t msdu_rate_loss);
+    int (* sawf_set_svclass_cfg) (bool enable, uint8_t svclass_id,
+                                  uint32_t min_thruput_rate,
+                                  uint32_t max_thruput_rate,
+                                  uint32_t burst_size,
+                                  uint32_t service_interval,
+                                  uint32_t delay_bound,
+                                  uint32_t msdu_ttl,
+                                  uint32_t msdu_rate_loss);
+    int (* sawf_set_sla_dtct_cfg) (uint8_t detect_type,
+                                   uint8_t min_thruput_rate,
+                                   uint8_t max_thruput_rate,
+                                   uint8_t burst_size,
+                                   uint8_t service_interval,
+                                   uint8_t delay_bound,
+                                   uint8_t msdu_ttl,
+                                   uint8_t msdu_rate_loss);
+    int (* sawf_push_delay) (void *telemetry_sawf_ctx, uint8_t tid,
+                             uint8_t queue, uint64_t pass,
+                             uint64_t fail);
+    int (* sawf_push_delay_mvng) (void *telemetry_ctx, uint8_t tid,
+                                  uint8_t queue, uint64_t window_delay);
+    int (* sawf_push_msdu_drop) (void * telemetry_sawf_ctx, uint8_t tid,
+                                 uint8_t queue, uint64_t pass,
+                                 uint64_t fail_drop, uint64_t fail_ttl);
+    int (* sawf_pull_rate) (void *telemetry_sawf_ctx, uint8_t tid,
+                            uint8_t queue, uint32_t *rate);
+    int (* sawf_pull_mov_avg) (void *telemetry_sawf_ctx, uint8_t tid,
+                               uint8_t queue, uint32_t *mov_avg);
 };
 
 struct t2lm_of_tids {
@@ -128,4 +172,17 @@ int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats
 
 int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
 int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
+
+int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
+                             uint64_t *in_cnt, uint64_t *tx_bytes,
+                             uint64_t *tx_cnt, uint8_t tid,
+                             uint8_t msduq);
+int wlan_sawf_get_mpdu_stats(void *soc, void *arg,
+                             uint64_t *svc_int_pass,
+                             uint64_t *svc_int_fail,
+                             uint64_t *burst_pass, uint64_t *burst_fail,
+                             uint8_t tid, uint8_t msduq);
+int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
+                             uint64_t *drop, uint64_t *drop_ttl,
+                             uint8_t tid, uint8_t msduq);
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */
