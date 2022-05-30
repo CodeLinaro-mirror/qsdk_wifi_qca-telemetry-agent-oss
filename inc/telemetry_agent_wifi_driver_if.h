@@ -121,7 +121,7 @@ struct agent_link_iface_stats_obj {
     uint32_t tx_mpdu_total;
 };
 
-
+void wlan_cfg80211_t2lm_app_reply_init_response(void);
 int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
 int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);
 int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats);

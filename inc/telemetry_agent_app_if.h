@@ -24,7 +24,7 @@
 #define RFS_INIT_DATA 1
 #define RFS_STATS_DATA 2
 #define EHTCAP_TXRX_MCS_NSS_IDX_MAX 2
-
+#define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
 
 /*
    Buffer Format
@@ -42,6 +42,15 @@ struct telemetry_agent_header {
 	u_int32_t   payload_len;
 } __attribute__ ((__packed__));
 
+enum wlan_vendor_channel_width {
+	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
+	WLAN_VENDOR_CHAN_WIDTH_20MHZ = 1,
+	WLAN_VENDOR_CHAN_WIDTH_40MHZ = 2,
+	WLAN_VENDOR_CHAN_WIDTH_80MHZ = 3,
+	WLAN_VENDOR_CHAN_WIDTH_160MZ = 4,
+	WLAN_VENDOR_CHAN_WIDTH_80_80MHZ = 5,
+	WLAN_VENDOR_CHAN_WIDTH_320MHZ = 6,
+};
 
 enum t2lm_band_caps {
 	T2LM_BAND_2GHz,
@@ -68,7 +77,7 @@ struct agent_peer_stats {
 	uint8_t airtime_consumption;
 	uint8_t m1_stats;
 	uint8_t m2_stats;
-	uint8_t rssi;
+	int8_t rssi;
 };
 
 struct agent_link_stats {
@@ -108,17 +117,18 @@ struct agent_peer_init_stats {
 	uint8_t mld_mac_addr[6];      /* peer MLD mac */
 	uint8_t link_mac_addr[6];     /* peer MLD link mac */
 	struct link_map_of_tids t2lm_info[T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
-	uint8_t chan_bw;                     /* peer link channel bandwidth */
+	enum wlan_vendor_channel_width chan_bw;
 	uint16_t chan_freq;                  /* channel center frequency */
 	uint8_t link_tx_power;               /* tx power of the STA */
 	uint8_t psd_flag;                    /* is psd channel */
 	uint8_t psd_eirp;                    /* PSD power level */
-	uint32_t mcs_nss_map[EHTCAP_TXRX_MCS_NSS_IDX_MAX];    /* mcs-nss map */
+	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 };
 
 struct agent_link_init_stats {
 	uint8_t hw_link_id;
-	enum t2lm_band_caps band;
+	/* enum t2lm_band_caps band; */
 	uint16_t num_peers;
 	struct agent_peer_init_stats peer_stats[MAX_PEERS];
 };
@@ -126,7 +136,7 @@ struct agent_link_init_stats {
 struct agent_soc_init_stats {
 	uint8_t soc_id;
 	uint16_t num_peers;
-	uint16_t max_peers;
+	/* uint16_t max_peers; */
 	uint8_t num_links;
 	struct agent_link_init_stats link_stats[MAX_MLD_LINKS];
 };
