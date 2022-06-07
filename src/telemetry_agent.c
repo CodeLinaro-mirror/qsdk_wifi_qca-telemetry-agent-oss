@@ -153,7 +153,9 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	struct agent_peer_init_stats *rfs_peer_stats = NULL;
 
 
+#ifdef WLAN_TELEMETRY_STATS_SUPPORT
 	wlan_cfg80211_t2lm_app_reply_init_response();
+#endif
 
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;
 	stats_buffer.header.stats_version = 1;
@@ -479,8 +481,8 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_alloc_peer: telemetry_sawf_alloc_peer,
 	sawf_updt_queue_info: telemetry_sawf_update_queue_info,
 	sawf_free_peer: telemetry_sawf_free_peer,
-	sawf_push_delay: telemetry_sawf_update_delay,
-	sawf_push_delay_mvng: telemetry_sawf_update_delay_mov_avg,
+	sawf_push_delay: telemetry_sawf_update_peer_delay,
+	sawf_push_delay_mvng: telemetry_sawf_update_peer_delay_mov_avg,
 	sawf_push_msdu_drop: telemetry_sawf_update_msdu_drop,
 	sawf_pull_rate: telemetry_sawf_get_rate,
 	sawf_pull_mov_avg: telemetry_sawf_get_mov_avg
@@ -496,7 +498,7 @@ static int telemetry_agent_init_module(void)
 	}
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_init, telemetry_agent_stats_work_init);
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_periodic, telemetry_agent_stats_work_periodic);
-
+	telemetry_sawf_init_ctx();
 	return status;
 }
 
@@ -507,6 +509,7 @@ static void telemetry_agent_exit_module(void)
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
 	unregister_telemetry_agent_ops(&agent_ops);
 	memset(&g_agent_obj, 0, sizeof(struct telemetry_agent_object));
+	telemetry_sawf_free_ctx();
 	return;
 }
 

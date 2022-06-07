@@ -59,6 +59,7 @@ struct telemetry_agent_ops {
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
+                               uint8_t *mac_addr,
                                uint8_t svc_id, uint8_t hostq_id);
     void (* sawf_free_peer) (void *telemetry_sawf_ctx);
     int (* sawf_updt_queue_info) (void *telemetry_sawf_ctx,

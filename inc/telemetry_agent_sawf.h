@@ -13,61 +13,580 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
 #ifndef TELEMETRY_AGENT_SAWF_H
 #define TELEMETRY_AGENT_SAWF_H
 
-#include <linux/module.h>
-#include <linux/platform_device.h>
-#include <linux/relay.h>
-#include <linux/proc_fs.h>
-#include <linux/device.h>
-#include <linux/debugfs.h>
-#include <qdf_status.h>
-#include <qdf_types.h>
-#include <qdf_list.h>
+#include <linux/slab.h>
+#include <linux/list.h>
+#include <linux/timer.h>
+#include "../inc/telemetry_agent.h"
+
+#define SAWF_MAX_SVC_CLASS 128
+#define SAWF_MAX_TID 8
+#define SAWF_MAXQ_PTID 2
+#define SAWF_MAX_QUEUES (SAWF_MAX_TID * SAWF_MAXQ_PTID)
+
+#define MSEC_TO_JIFFIES(x) jiffies + msecs_to_jiffies(x)
+
+#define pr_sawf_err(...) printk(KERN_ERR "SAWF Telemetry: " __VA_ARGS__)
+#define pr_sawf_info(...) printk(KERN_ERR "SAWF Telemetry: " __VA_ARGS__)
+#define pr_sawf_dbg(...) printk(KERN_DEBUG "SAWF Telemetry: " __VA_ARGS__)
+
+#define DELAY_BOUND_UNIT 100
+#define THROUGHPUT_UNIT 1024
+#define SERVICE_INTERVAL_UNIT 100
+#define BURST_SIZE_UNIT 1
+#define MSDU_LOSS_UNIT 1/100
+
+#define MAC_ADDR_SIZE 6
+
+/**
+ * telemetry_sawf_mov_avg_params - telemetry sawf moving average params
+ * @packet: num packets
+ * @window: window no
+ */
+struct telemetry_sawf_mov_avg_params {
+	uint32_t packet;
+	uint32_t window;
+};
+
+/**
+ * telemetry_sawf_sla_params - telemetry sawf sla params
+ * @num_packets: num packets
+ * @time_secs: time in secs
+ */
+struct telemetry_sawf_sla_params {
+	uint32_t num_packets;
+	uint32_t time_secs;
+};
+
+/**
+ * telemetry_sawf_sla_detect_type - telemetry sawf sla detect-type
+ * @SAWF_SLA_DETECT_NUM_PACKET: per-n-pkts detection-type
+ * @SAWF_SLA_DETECT_PER_SECOND: per-second detection-type
+ * @SAWF_SLA_DETECT_MOV_AVG: movig-average detection-type
+ * @SAWF_SLA_DETECT_NUM_SECOND: per-n-second detection-type
+ * @SAWF_SLA_DETECT_MAX: max-number
+ */
+enum telemetry_sawf_sla_detect_type {
+	SAWF_SLA_DETECT_NUM_PACKET,
+	SAWF_SLA_DETECT_PER_SECOND,
+	SAWF_SLA_DETECT_MOV_AVG,
+	SAWF_SLA_DETECT_NUM_SECOND,
+	SAWF_SLA_DETECT_MAX,
+};
+
+/**
+ * telemetry_sawf_sla_param - telemetry sawf sla params
+ * @min_thruput_rate: minimum throughput
+ * @max_thruput_rate: maximum throughput
+ * @burst_size: burst-size num-pkts
+ * @service_interval: service-interval
+ * @delay_bound: delay-bound
+ * @msdu_ttl: TTL for msdu-drop
+ * @msdu_rate_loss:  msdu-loss rate
+ */
+struct telemetry_sawf_sla_param {
+	uint8_t min_thruput_rate;
+	uint8_t max_thruput_rate;
+	uint8_t burst_size;
+	uint8_t service_interval;
+	uint8_t delay_bound;
+	uint8_t msdu_ttl;
+	uint8_t msdu_rate_loss;
+};
+
+/**
+ * telemetry_sawf_svc_class_param - telemetry sawf sla params
+ * @min_thruput_rate: minimum throughput
+ * @max_thruput_rate: maximum throughput
+ * @burst_size: burst-size num-pkts
+ * @service_interval: service-interval
+ * @delay_bound: delay-bound
+ * @msdu_ttl: TTL for msdu-drop
+ * @msdu_rate_loss:  msdu-loss rate
+ */
+struct telemetry_sawf_svc_class_param {
+	uint8_t min_thruput_rate;
+	uint8_t max_thruput_rate;
+	uint8_t burst_size;
+	uint8_t service_interval;
+	uint8_t delay_bound;
+	uint8_t msdu_ttl;
+	uint8_t msdu_rate_loss;
+};
 
 
-struct tlmtry_agent_sawf_sla_params{
-	uint8_t threshold[SAWF_STATS_TYPE_MAX];
-}
+/**
+ * telemetry_sawf_sla - telemetry sawf sla-config
+ * @sla_cfg: array of sla- params
+ * @sla_service_ids: bitmap of service ID with SLA configured
+ */
+struct telemetry_sawf_sla {
+	struct telemetry_sawf_sla_param sla_cfg[SAWF_MAX_SVC_CLASS];
+	DECLARE_BITMAP(sla_service_ids, SAWF_MAX_SVC_CLASS);
+};
 
-struct tlmtry_agent_sawf_sla_params
-tlmtry_agent_svclass_sla[SAWF_MAX_SERVICE_CLASS];
+/**
+ * telemetry_sawf_svc_class- telemetry sawf service class config
+ * @svc_class: array of service class params
+ * @service_ids: bitmap of service clas ID active
+ */
+struct telemetry_sawf_svc_class {
+	struct telemetry_sawf_svc_class_param svc_class[SAWF_MAX_SVC_CLASS];
+	DECLARE_BITMAP(service_ids, SAWF_MAX_SVC_CLASS);
+};
 
-qdf_list_t tlmtry_agent_sawf_peer_list;
+/**
+ * telemetry_sawf_sla_detect_cfg - telemetry sawf sla-detect config
+ * @sla_detect: array of sla_detect params
+ */
+struct telemetry_sawf_sla_detect_cfg {
+	struct telemetry_sawf_sla_param sla_detect[SAWF_SLA_DETECT_MAX];
+};
 
-QDF_STATUS
-tlmtry_agent_sawf_upd_delay_stats(uint16_t peer_id, uint8_t svc_id,
-				  void *stats, struct moving_avg_params);
-QDF_STATUS
-tlmtry_agent_sawf_upd_svc_intv_stats(uint16_t peer_id, uint8_t svc_id,
-				     void *stats);
+/**
+ * telemetry_sawf_ctx - telemetry sawf context
+ * @mov_avg: moving average params
+ * @sla_params: sla-params
+ * @vc_class: service class params
+ * @sla: sla config array for all service-classes
+ * @sla_detect: sla-detect config
+ * @per_sec_timer: per-second timer list
+ * @num_sec_timer: per-n-second timer list
+ * @peer_list: list of peers
+ */
+struct telemetry_sawf_ctx {
+	struct telemetry_sawf_mov_avg_params mov_avg;
+	struct telemetry_sawf_sla_params sla_param;
+	struct telemetry_sawf_svc_class svc_class;
+	struct telemetry_sawf_sla sla;
+	struct telemetry_sawf_sla_detect_cfg sla_detect;
+	struct timer_list per_sec_timer;
+	struct timer_list num_sec_timer;
+	struct list_head peer_list;
+};
 
-QDF_STATUS
-tlmtry_agent_sawf_upd_burst_size_stats(uint16_t peer_id, uint8_t svc_id,
-				       void *stats);
+/**
+ * telemetry_sawf_throughput - telemetry sawf throughput-stats
+ * @last_bytes: last byte-count
+ * @last_count: last pkt-count
+ * @rate: last rate
+ */
+struct telemetry_sawf_throughput
+{
+	uint64_t last_bytes;
+	uint64_t last_count;
+	uint64_t last_in_bytes;
+	uint64_t last_in_count;
+	uint32_t in_rate;
+	uint32_t eg_rate;
+};
 
-QDF_STATUS
-tlmtry_agent_sawf_upd_msdu_drop_stats(uint16_t peer_id, uint8_t svc_id,
-				      void *stats);
+/**
+ * telemetry_sawf_drops - telemetry sawf drop-stats
+ * @last_xmit_cnt_seconds: last tx-success-count for n-secs
+ * @last_drop_cnt_seconds: last tx-drop-count for n-secs
+ * @last_xmit_cnt_packets: last tx-success-count for n-pkts
+ * @last_drop_cnt_packets: last tx-drop-count for n-pkts
+ * @last_ttl_drop_cnt_packets: last ttl-drop-count for n-pkts
+ */
+struct telemetry_sawf_drops
+{
+	uint64_t last_xmit_cnt_seconds;
+	uint64_t last_drop_cnt_seconds;
+	uint64_t last_ttl_drop_cnt_seconds;
+	uint64_t last_xmit_cnt_packets;
+	uint64_t last_drop_cnt_packets;
+	uint64_t last_ttl_drop_cnt_packets;
+};
 
-QDF_STATUS
-tlmtry_agent_sawf_upd_msdu_ttl_drop_stats(uint16_t peer_id, uint8_t svc_id,
-					 void *stats);
+/**
+ * telemetry_service_interval - telemetry service-interval stats
+ * @last_success: last-success count
+ * @last_success: last-failure count
+ */
+struct telemetry_service_interval
+{
+	uint64_t last_success;
+	uint64_t last_failure;
+};
 
-QDF_STATUS
-telemtry_agent_sawf_upd_sla_detect_param(uint8_t num_pkts,
-					 uint8_t time_in_secs);
+/**
+ * telemetry_burst_size - telemetry burst-size stats
+ * @last_success: last-success count
+ * @last_success: last-failure count
+ */
+struct telemetry_burst_size
+{
+	uint64_t last_success;
+	uint64_t last_failure;
+};
 
-QDF_STATUS
-tlmtry_agent_sawf_upd_sla_param(uint8_t svc_id,
-				struct tlmtry_agent_sawf_sla_params
-				*service_class_sla);
+/**
+ * telemetry_sawf_tx - telemetry sawf tx-stats
+ * @throughput: throughput
+ * @msdu_drop: msdu drop count
+ * @service_interval: service-interval num
+ * @burst_size: burst-size stats
+ */
+struct telemetry_sawf_tx {
+	struct telemetry_sawf_throughput throughput;
+	struct telemetry_sawf_drops msdu_drop;
+	struct telemetry_service_interval service_interval;
+	struct telemetry_burst_size burst_size;
+};
 
-void
-tlmtry_agent_sawf_detect_breach_num_packet(void);
+/**
+ * telemetry_sawf_delay - telemetry sawf delay-stats
+ * @last_success: last-success count
+ * @last_success: last-failure count
+ * @cur_window: current window no
+ * @mov_avg: average of all windows
+ * @windows_total: sum of stats for all windows
+ */
+struct telemetry_sawf_delay {
+	uint64_t last_success;
+	uint64_t last_failure;
+	uint64_t cur_window;
+	uint64_t mov_avg;
+	uint64_t windows_total;
+};
 
-void
-tlmtry_agent_sawf_detect_breach_in_time(void);
+/**
+ * telemetry_sawf_stats - sawf telemetry stats
+ * @tx: Tx stats
+ * @delay: delay stats
+ */
+struct telemetry_sawf_stats {
+	struct telemetry_sawf_tx tx;
+	struct telemetry_sawf_delay delay;
+};
+
+/**
+ * sawf_msduq - sawf msud-queue
+ * @tid: tis no
+ * @htt_msduq: htt msdu-queue no
+ * @svc_id: service-class id
+ */
+struct sawf_msduq {
+	uint8_t tid;
+	uint8_t htt_msduq;
+	uint8_t svc_id;
+};
+
+/**
+ * peer_sawf_queue - sawf-peer queue
+ * @active_queue: bitmap for active service-class id
+ * @msduq_map: msdu_queue-tid map
+ * @msduq: msdu-queue array
+ */
+struct peer_sawf_queue {
+	DECLARE_BITMAP(active_queue, SAWF_MAX_QUEUES);
+	uint8_t msduq_map[SAWF_MAX_TID][SAWF_MAXQ_PTID];
+	struct sawf_msduq msduq[SAWF_MAX_QUEUES];
+};
+
+/**
+ * telemetry_sawf_peer_ctx - Telemetry sawf-peer ctx
+ * @node: list-head
+ * @stats: telemetry-sawf stats
+ * @mov_window:pointer to moving-window
+ * @dp_peer: opaque dp-peer handle
+ * @sawf-ctx: opaque peer_sawf ctx
+ * @soc: opaque soc-ctx
+ * @peer_msduq: per-peer msduq info
+ *
+ */
+struct telemetry_sawf_peer_ctx {
+	struct list_head node;
+	struct telemetry_sawf_stats stats[SAWF_MAX_TID][SAWF_MAXQ_PTID];
+	uint64_t *mov_window;
+	void *dp_peer;
+	void *sawf_ctx;
+	void *soc;
+	uint8_t mac_addr[MAC_ADDR_SIZE];
+	struct peer_sawf_queue peer_msduq;
+};
+
+/**
+ * telemetry_sawf_init_ctx - Initialize sawf-telemetry ctx
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_init_ctx(void);
+
+/**
+ * telemetry_sawf_free_ctx - Free sawf-telemetry ctx
+ *
+ * Return: none
+ */
+void telemetry_sawf_free_ctx(void);
+
+/**
+ * telemetry_sawf_get_ctx - get sawf-telemetry ctx
+ *
+ * Return: sawf-telemetry pointer
+ */
+struct telemetry_sawf_ctx *telemetry_sawf_get_ctx(void);
+
+/**
+ * telemetry_sawf_set_sla_detect_cfg- Set sla config per detection-type
+ * @svc_id: service-class id
+ * @min_thruput_rate: minimum throughput
+ * @max_thruput_rate: maximum throughput
+ * @burst_size: burst-size num-pkts
+ * @service_interval: service-interval
+ * @delay_bound: delay-bound
+ * @msdu_ttl: TTL for msdu-drop
+ * @msdu_rate_loss:  msdu-loss rate
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_set_sla_detect_cfg(uint8_t type,
+				      uint8_t min_thruput_rate,
+				      uint8_t max_thruput_rate,
+				      uint8_t burst_size,
+				      uint8_t service_interval,
+				      uint8_t delay_bound,
+				      uint8_t msdu_ttl,
+				      uint8_t msdu_rate_loss);
+
+/**
+ * telemetry_sawf_set_sla_cfg - set per-service-class sla config
+ * @svc_id: service-class id
+ * @min_thruput_rate: minimum throughput
+ * @max_thruput_rate: maximum throughput
+ * @burst_size: burst-size num-pkts
+ * @service_interval: service-interval
+ * @delay_bound: delay-bound
+ * @msdu_ttl: TTL for msdu-drop
+ * @msdu_rate_loss:  msdu-loss rate
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_set_sla_cfg(uint8_t svc_id,
+			       uint8_t min_thruput_rate,
+			       uint8_t max_thruput_rate,
+			       uint8_t burst_size,
+			       uint8_t service_interval,
+			       uint8_t delay_bound,
+			       uint8_t msdu_ttl,
+			       uint8_t msdu_rate_loss);
+
+/**
+ * telemetry_sawf_set_svclass_cfg - set per-service-class config
+ * @enable: enable/disable
+ * @svc_id: service-class id
+ * @min_thruput_rate: minimum throughput
+ * @max_thruput_rate: maximum throughput
+ * @burst_size: burst-size num-pkts
+ * @service_interval: service-interval
+ * @delay_bound: delay-bound
+ * @msdu_ttl: TTL for msdu-drop
+ * @msdu_rate_loss:  msdu-loss rate
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_set_svclass_cfg(bool enable,
+				   uint8_t svc_id,
+				   uint32_t min_thruput_rate,
+				   uint32_t max_thruput_rate,
+				   uint32_t burst_size,
+				   uint32_t service_interval,
+				   uint32_t delay_bound,
+				   uint32_t msdu_ttl,
+				   uint32_t msdu_rate_loss);
+
+
+/**
+ * telemetry_sawf_set_mov_avg_params- Set moving-average params
+ * @num_packet: no of pkts
+ * @window: window-no in use
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_set_mov_avg_params(uint32_t packet, uint32_t window);
+
+/**
+ * telemetry_sawf_set_sla_params- Set sla-params
+ * @num_packet: no of pkts
+ * @time_secs: time in secs
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_set_sla_params(uint32_t num_packet,
+				  uint32_t time_secs);
+
+/**
+ * telemetry_sawf_alloc_peer- Allocate telemetry-peer context
+ * @soc: soc handle
+ * @sawf_stats_ctx: peer sawf-stats ctx
+ * @mac_addr: MAC address
+ * @svc_id: service-class id
+ * @host_q_id: host msdu-queue id
+ *
+ * Return: opaque pointer
+ */
+void *telemetry_sawf_alloc_peer(void * soc, void *sawf_stats_ctx,
+				uint8_t *mac_addr,
+				uint8_t svc_id, uint8_t host_q_id);
+
+/**
+ * telemetry_sawf_update_queue_info- Update msdu-queue info
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @svc-id: service-class id
+ * @tid: tid no
+ * @msduq: msdu-queue no
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_update_queue_info(void *telemetry_ctx,
+				     uint8_t svc_id, uint8_t tid,
+				     uint8_t msduq);
+
+/**
+ * telemetry_sawf_free_peer - Free telemetry-peer context
+ * @telemetry_peer_ctx: telemetry-peer context
+ *
+ * Return: 0 on success
+ */
+void telemetry_sawf_free_peer(void *telemetry_peer_ctx);
+
+/**
+ * telemetry_sawf_update_peer_delay - Update delay-stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @pass: no of pkts that passed delay-bound
+ * @fail: no of pkts that failed delay-bound
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid,
+				uint8_t queue, uint64_t pass,
+				uint64_t fail);
+
+/**
+ * telemetry_sawf_update_peer_delay_mov_avg - Update moving-avg delay-stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @window_delay: window delay stats
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
+					uint8_t tid, uint8_t queue,
+					uint64_t window_delay);
+
+/**
+ * telemetry_sawf_update_msdu_drop - Update msdu-drop stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @pass: no of pkts successfully txed
+ * @fail_drop: no of dropped pkts
+ * @fail_ttl: no of pkts dropped due to TTL-expiry
+ * @mov_avg: pointer to rate
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
+				    uint8_t queue, uint64_t pass,
+				    uint64_t fail_drop,
+				    uint64_t fail_ttl);
+
+/**
+ * telemetry_sawf_get_mov_avg_param - Get moving-average param
+ *
+ * Return: pointer to memory holding moving-average-param
+ */
+struct telemetry_sawf_mov_avg_params* telemetry_sawf_get_mov_avg_param
+								(void);
+
+/**
+ * telemetry_sawf_get_sla_param - Get sla-param
+ *
+ * Return: pointer to memory holding sla-param
+ */
+struct telemetry_sawf_sla_params* telemetry_sawf_get_sla_param(void);
+
+/**
+ * telemetry_sawf_delay_window_alloc - Allocate delay-window
+ *
+ * Return: pointer to delay-window
+ */
+uint64_t *telemtry_sawf_delay_window_alloc(void);
+
+/**
+ * telemetry_sawf_delay_window_free - Free delay-window
+ * @mov_window: delay-window pointer
+ *
+ * Return: 0 on success
+ */
+int telemtry_sawf_delay_window_free(uint64_t *mov_window);
+
+/**
+ * telemetry_sawf_get_rate - Get moving window rate stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @mov_avg: pointer to rate
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid,
+			    uint8_t queue, uint32_t *rate);
+
+/**
+ * telemetry_detect_get_mov_avg - Get moving window average stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @mov_avg: pointer to moving-avg data
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid,
+			       uint8_t queue, uint32_t *mov_avg);
+
+/**
+ * telemetry_sawf_init_per_sec_sla_timer - Initialize per-sec timer to
+ * 					   fetch stats
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_init_per_sec_sla_timer(void);
+
+/**
+ * telemetry_sawf_init_sla_timer - Initialize sla timer
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_init_sla_timer(void);
+
+/**
+ * telemetry_sawf_free_sla_timer- Initialize sla timer
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_free_sla_timer(void);
+
+/**
+ * telemetry_detect_sla_per_sec - Detect sla breach per second
+ * @timer: pointer to timer structure
+ *
+ * Return: void
+ */
+void telemetry_detect_sla_per_sec(struct timer_list *timer);
+
+/**
+ * telemetry_detect_sla_num_sec - Detect sla breach per n-seconds
+ * @timer: pointer to timer structure
+ *
+ * Return: void
+ */
+void telemetry_detect_sla_num_sec(struct timer_list *timer);
+
 #endif /* TELEMETRY_AGENT_SAWF_H */
