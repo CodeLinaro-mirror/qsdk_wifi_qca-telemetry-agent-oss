@@ -398,8 +398,8 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_svc_class_param *svc_param;
 	struct telemetry_sawf_sla_param *sla_param;
-	uint64_t pass_p;
-	uint32_t threshold;
+	uint64_t total;
+	uint32_t threshold, pass_p;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
@@ -407,14 +407,15 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].delay_bound) {
 		threshold = sla_param->delay_bound;
-		pass_p = (pass * 100)/(pass + fail);
+		total = pass + fail;
+		pass_p = (total - fail * 100)/(pass + fail);
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA Delay Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("Delay threshold: %d", threshold);
 			pr_sawf_err("Delay Success: %lld", pass);
 			pr_sawf_err("Delay Failure: %lld", fail);
-			pr_sawf_err("Pass Percentage: %lld", pass_p);
+			pr_sawf_err("Pass Percentage: %d", pass_p);
 		}
 	}
 
@@ -425,14 +426,13 @@ static int
 telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 				     uint8_t svc_id,
 				     uint8_t tid, uint8_t queue,
-				     uint64_t pass, uint64_t drop,
+				     uint64_t total, uint64_t drop,
 				     uint64_t drop_ttl)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_svc_class_param *svc_param;
 	struct telemetry_sawf_sla_param *sla_param;
-	uint64_t pass_p;
-	uint32_t threshold;
+	uint32_t threshold, pass_p, num_drops;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
@@ -440,29 +440,29 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].msdu_ttl) {
 		threshold = sla_param->msdu_ttl;
-		pass_p = (drop_ttl * 100)/pass;
+		pass_p = (total - drop_ttl * 100)/total;
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA MSDU TTL Loss Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU TTL Drop threshold: %d", threshold);
-			pr_sawf_err("MSDU TTL Drop Success: %lld", pass);
+			pr_sawf_err("MSDU TTL Drop Success: %lld", total);
 			pr_sawf_err("MSDU TTL Drop Failure: %lld", drop_ttl);
-			pr_sawf_err("Pass Percentage: %lld", pass_p);
+			pr_sawf_err("Pass Percentage: %d", pass_p);
 		}
 	}
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].msdu_rate_loss) {
-	}
-		threshold = sla_param->msdu_rate_loss ;
-		pass_p = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * pass;
-		if (drop < ((pass_p * 100)/threshold)) {
+		threshold = sla_param->msdu_rate_loss;
+		/* Number of packets drop allowed */
+		num_drops = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * total;
+		if (num_drops && (((drop * 100)/num_drops) < threshold)) {
 			pr_sawf_err("SLA MSDU Loss Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
-			pr_sawf_err("MSDU Drop Max Count: %lld", pass_p);
+			pr_sawf_err("MSDU Drop Max Count: %d", num_drops);
 			pr_sawf_err("MSDU Drop Count: %lld", drop);
 		}
-
+	}
 	return 0;
 }
 
@@ -532,7 +532,6 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	tput->in_rate = in_rate;
 	tput->eg_rate = eg_rate;
 
-
 	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
 		pr_sawf_dbg("SLA Breach not configure for SVC ID: %d",
 			    svc_id);
@@ -584,8 +583,9 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 
 	uint64_t curr_svc_int_pass = 0, curr_svc_int_fail = 0;
 	uint64_t curr_burst_pass = 0, curr_burst_fail = 0;
-	uint64_t curr_pass = 0, curr_drop = 0, curr_drop_ttl = 0;
-	uint64_t pass_p;
+	uint64_t curr_total = 0, curr_drop = 0, curr_drop_ttl = 0;
+	uint64_t total;
+	uint32_t pass_p, num_drops;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
@@ -615,25 +615,13 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 					 tid, queue);
 
 	msdu_drop = &peer->stats[tid][queue].tx.msdu_drop;
-	curr_pass = pass - msdu_drop->last_xmit_cnt_seconds;
+	curr_total = pass - msdu_drop->last_xmit_cnt_seconds;
 	curr_drop = drop - msdu_drop->last_drop_cnt_seconds;
 	curr_drop_ttl = drop_ttl - msdu_drop->last_ttl_drop_cnt_seconds;
 
 	msdu_drop->last_xmit_cnt_seconds = pass;
 	msdu_drop->last_drop_cnt_seconds = drop;
 	msdu_drop->last_ttl_drop_cnt_seconds = drop_ttl;
-
-#ifdef VIVEK
-	pr_sawf_dbg("Detect svc_intvl/burst_size/msdu_drop num sec"
-		    "SLA breach for svcid:%d", svc_id);
-	pr_sawf_dbg("curr_svc_int_pass:%lld", curr_svc_int_pass);
-	pr_sawf_dbg("curr_svc_int_fail:%lld", curr_svc_int_fail);
-	pr_sawf_dbg("curr_pass:%lld", curr_pass );
-	pr_sawf_dbg("curr_drop:%lld", curr_drop);
-	pr_sawf_dbg("curr_drop_ttl:%lld", curr_drop_ttl);
-	pr_sawf_dbg("curr_burst_pass:%lld", curr_burst_pass);
-	pr_sawf_dbg("curr_burst_fail:%lld", curr_burst_fail);
-#endif
 
 	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
 		pr_sawf_dbg("SLA Breach not configure for SVC ID: %d",
@@ -643,55 +631,56 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].burst_size) {
 		threshold = sla_param->burst_size;
-		pass_p = (curr_burst_pass * 100)/(curr_burst_pass + curr_burst_fail);
-		if (pass_p < threshold) {
+		total = curr_burst_pass + curr_burst_fail;
+		pass_p = (total - curr_burst_fail * 100)/(total);
+		if (curr_svc_int_fail && pass_p < threshold) {
 			pr_sawf_err("SLA Burst Size(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("Burst Size threshold: %d", threshold);
 			pr_sawf_err("Burst Size success: %lld", curr_burst_pass);
 			pr_sawf_err("Burst Size Failure: %lld", curr_burst_fail);
-			pr_sawf_err("Pass Percentage: %lld", pass_p);
+			pr_sawf_err("Pass Percentage: %d", pass_p);
 		}
 	}
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].service_interval) {
 		threshold = sla_param->service_interval;
-		pass_p = (curr_svc_int_pass * 100)/(curr_svc_int_pass + curr_svc_int_fail);
-		if (pass_p < threshold) {
+		total = curr_svc_int_pass + curr_svc_int_fail;
+		pass_p = (total - curr_svc_int_fail * 100)/(total);
+		if (curr_svc_int_fail && pass_p < threshold) {
 			pr_sawf_err("SLA Service Interval(per_s_sec) Breach Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("Service Interval threshold: %d", threshold);
 			pr_sawf_err("Service Interval success: %lld", curr_burst_pass);
 			pr_sawf_err("Service Interval Failure: %lld", curr_burst_fail);
-			pr_sawf_err("Pass Percentage: %lld", pass_p);
+			pr_sawf_err("Pass Percentage: %d", pass_p);
 		}
 	}
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].msdu_ttl) {
 		threshold = sla_param->msdu_ttl;
-		pass_p = (curr_drop_ttl * 100)/curr_pass;
-		if (pass_p < threshold) {
+		pass_p = (curr_total - curr_drop_ttl * 100)/curr_total;
+		if (curr_drop_ttl && pass_p < threshold) {
 			pr_sawf_err("SLA MSDU TTL(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU TTL Drop threshold: %d", threshold);
-			pr_sawf_err("MSDU TTL Drop Success: %lld", curr_pass);
+			pr_sawf_err("MSDU TTL Drop Success: %lld", curr_total);
 			pr_sawf_err("MSDU TTL Drop Failure: %lld", curr_drop_ttl);
-			pr_sawf_err("Pass Percentage: %lld", pass_p);
+			pr_sawf_err("Pass Percentage: %d", pass_p);
 		}
 	}
 
 	if (sawf_ctx->sla.sla_cfg[svc_id].msdu_rate_loss) {
-		threshold = sla_param->msdu_rate_loss ;
-		pass_p = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * curr_pass;
-		if (curr_drop < ((pass_p * 100)/threshold)) {
+		threshold = sla_param->msdu_rate_loss;
+		num_drops = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * curr_total;
+		if (num_drops && (((curr_drop * 100)/num_drops) < threshold)) {
 			pr_sawf_err("SLA MSDU Loss(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
-			pr_sawf_err("MSDU Drop Max Count: %lld", pass_p);
+			pr_sawf_err("MSDU Drop Max Count: %d", num_drops);
 			pr_sawf_err("MSDU Drop Count: %lld", curr_drop);
 		}
 	}
-
 	return 0;
 }
 
@@ -717,13 +706,6 @@ telemetry_detect_breach_peer(struct telemetry_sawf_peer_ctx *peer,
 
 	peer_queue = &peer->peer_msduq;
 	for_each_set_bit(bit, peer_queue->active_queue, SAWF_MAX_QUEUES) {
-#ifdef VIVEK
-		pr_sawf_dbg("Host Q: %d | Service ID: %d| TID: %d| MSDUQ: %d",
-			    bit, peer_queue->msduq[bit].svc_id,
-			    peer_queue->msduq[bit].tid,
-			    peer_queue->msduq[bit].htt_msduq);
-#endif
-
 		tid = peer_queue->msduq[bit].tid;
 		queue = peer_queue->msduq[bit].htt_msduq;
 		svc_id = peer_queue->msduq[bit].svc_id;
@@ -847,14 +829,12 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 							   curr_win);
 		*q_window = window_delay;
 		delay->windows_total = delay->windows_total + window_delay;
-		pr_sawf_dbg("DELAY: Total delay for window(%lld) is %lld", delay->cur_window, delay->windows_total);
+		//pr_sawf_dbg("DELAY: Total delay for window(%lld) is %lld", delay->cur_window, delay->windows_total);
 		delay->cur_window++;
 	} else if (delay->cur_window == max_win) {
 		delay->mov_avg = delay->windows_total/max_win;
-		pr_sawf_dbg("========================================");
-		pr_sawf_dbg("DELAY: Max window: %d", max_win);
-		pr_sawf_dbg("DELAY: Average delay for window(%lld) is %lld", delay->windows_total, delay->mov_avg);
-		pr_sawf_dbg("========================================");
+		//pr_sawf_dbg("Delay: Max window: %d", max_win);
+		//pr_sawf_dbg("Delay: Average delay for window(%lld) is %lld", delay->windows_total, delay->mov_avg);
 		//Detect moving average SLA
 		delay->cur_window = 0;
 		delay->windows_total = 0;
@@ -869,13 +849,13 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 }
 
 int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
-				    uint8_t queue, uint64_t pass,
+				    uint8_t queue, uint64_t total,
 				    uint64_t fail_drop, uint64_t fail_ttl)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
 	struct telemetry_sawf_drops *msdu_drop;
-	uint64_t curr_pass, curr_fail, curr_fail_ttl;
+	uint64_t curr_total, curr_fail, curr_fail_ttl;
 	struct sawf_msduq *msduq;
 	uint8_t msduq_id;
 
@@ -883,7 +863,7 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
 	stats = &peer_ctx->stats[tid][queue];
 	msdu_drop = &stats->tx.msdu_drop;
 
-	curr_pass = pass - msdu_drop->last_xmit_cnt_packets - pass;
+	curr_total = total - msdu_drop->last_xmit_cnt_packets;
 	curr_fail = fail_drop - msdu_drop->last_drop_cnt_packets;
 	curr_fail_ttl = fail_ttl - msdu_drop->last_ttl_drop_cnt_packets;
 
@@ -891,7 +871,7 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
 	msduq = &peer_ctx->peer_msduq.msduq[msduq_id];
 	telemetry_detect_breach_peer_drop_num_pkt(peer_ctx, msduq->svc_id,
 						  tid, queue,
-						  curr_pass, curr_fail,
+						  curr_total, curr_fail,
 						  curr_fail_ttl);
 	return 0;
 }
@@ -919,6 +899,7 @@ int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 
 	*mov_avg = stats->delay.mov_avg;
 
+	pr_sawf_dbg("Moving Average: %d", *mov_avg);
 	return 0;
 }
 
@@ -942,7 +923,6 @@ int telemetry_sawf_init_sla_timer(void)
 
 	if (!find_first_bit(sawf_ctx->sla.sla_service_ids,
 			    SAWF_MAX_SVC_CLASS)) {
-
 		pr_sawf_dbg("SLA not configured for any service class");
 		return 0;
 	}

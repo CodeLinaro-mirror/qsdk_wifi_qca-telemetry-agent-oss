@@ -29,14 +29,12 @@
 #define MSEC_TO_JIFFIES(x) jiffies + msecs_to_jiffies(x)
 
 #define pr_sawf_err(...) printk(KERN_ERR "SAWF Telemetry: " __VA_ARGS__)
-#define pr_sawf_info(...) printk(KERN_ERR "SAWF Telemetry: " __VA_ARGS__)
+#define pr_sawf_info(...) printk(KERN_INFO "SAWF Telemetry: " __VA_ARGS__)
 #define pr_sawf_dbg(...) printk(KERN_DEBUG "SAWF Telemetry: " __VA_ARGS__)
 
-#define DELAY_BOUND_UNIT 100
+#define DELAY_BOUND_UNIT 1000
 #define THROUGHPUT_UNIT 1024
-#define SERVICE_INTERVAL_UNIT 100
-#define BURST_SIZE_UNIT 1
-#define MSDU_LOSS_UNIT 1/100
+#define MSDU_LOSS_UNIT 1/1000000
 
 #define MAC_ADDR_SIZE 6
 
