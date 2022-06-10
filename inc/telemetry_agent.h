@@ -27,30 +27,34 @@
 
 #define STATUS_SUCCESS 0
 #define STATUS_FAIL -1
-#define AGENT_MAX_BUFFER_SIZE 46200
+/* Maximum buffer size that is requied to transfer stats between
+agent and APP */
+#define AGENT_MAX_BUFFER_SIZE (85*1024)
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  5000 /*in milli seconds */
 
+#define MAC_ADDR_EQ(a1, a2)   (memcmp(a1, a2, 6) == 0)
 struct agent_peer_db {
-    void *peer_obj_ptr;
-    void *pdev_obj_ptr;
-    void *psoc_obj_ptr;
-    uint8_t peer_mac_addr[6];
-    uint32_t tx_mpdu_retried;
-    uint32_t tx_mpdu_total;
-    uint32_t rx_mpdu_retried;
-    uint32_t rx_mpdu_total;
+	struct list_head node;
+	void *peer_obj_ptr;
+	void *pdev_obj_ptr;
+	void *psoc_obj_ptr;
+	uint8_t peer_mac_addr[6];
+	uint32_t tx_mpdu_retried;
+	uint32_t tx_mpdu_total;
+	uint32_t rx_mpdu_retried;
+	uint32_t rx_mpdu_total;
 };
 
 struct agent_pdev_db {
-    void *pdev_obj_ptr;
-    void *psoc_obj_ptr;
-    uint8_t pdev_id;
-    uint32_t tx_mpdu_failed;
-    uint32_t tx_mpdu_total;
-    int num_peers;
-	/* FIXME: convert to list */
-    struct agent_peer_db peer_db[MAX_PEERS];
+	void *pdev_obj_ptr;
+	void *psoc_obj_ptr;
+	uint8_t pdev_id;
+	uint32_t tx_mpdu_failed;
+	uint32_t tx_mpdu_total;
+	int num_peers;
+	spinlock_t peer_db_lock;
+	struct list_head peer_db_list;
 };
 
 struct agent_soc_db {
@@ -66,17 +70,17 @@ struct agent_telemtry_db {
 };
 
 struct telemetry_agent_object {
-    /* RelayFS */
-    uint32_t num_subbufs;
-    uint32_t subbuf_size;
-    /* relay(fs) channel */
-    struct rchan *rfs_channel;
-    struct dentry *dir_ptr;
-    /* delyed work */
-    struct delayed_work stats_work_init;
-    /* delyed work periodic*/
-    struct delayed_work stats_work_periodic;
-    /* pdev and peer objects */
+	/* RelayFS */
+	uint32_t num_subbufs;
+	uint32_t subbuf_size;
+	/* relay(fs) channel */
+	struct rchan *rfs_channel;
+	struct dentry *dir_ptr;
+	/* delyed work */
+	struct delayed_work stats_work_init;
+	/* delyed work periodic*/
+	struct delayed_work stats_work_periodic;
+	/* pdev and peer objects */
 	struct agent_telemtry_db agent_db;
 };
 

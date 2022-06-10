@@ -46,6 +46,11 @@ struct agent_peer_obj {
     uint8_t peer_mac_addr[6];
 };
 
+enum agent_notification_event {
+    AGENT_NOTIFY_EVENT_INIT,
+    AGENT_NOTIFY_EVENT_DEINIT,
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -55,7 +60,7 @@ struct telemetry_agent_ops {
     int  (*agent_peer_destroy_handler) (void *arg, struct agent_peer_obj *peer_obj);
     int  (*agent_set_param) (struct agent_config_params *params);
     int  (*agent_get_param) (struct agent_config_params *params);
-    void (*agent_notify_app_init) (void);
+    void (*agent_notify_app_event) (enum agent_notification_event);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
@@ -104,14 +109,14 @@ struct telemetry_agent_ops {
 };
 
 struct t2lm_of_tids {
-	enum t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
+	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
 	uint8_t default_link_mapping;
 	uint16_t t2lm_provisioned_links[NUM_TIDS]; /*Bit0 for link0, bit1 for link1 and so on*/
 };
 
 struct eht_peer_caps {
-	uint32_t tx_mcs_nss_map[EHTCAP_TXRX_MCS_NSS_IDX_MAX];
-	uint32_t rx_mcs_nss_map[EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 };
 
 struct agent_peer_iface_init_obj {
@@ -120,9 +125,9 @@ struct agent_peer_iface_init_obj {
 	uint8_t link_id;
 	uint8_t soc_id;
 	uint8_t bw;
-	uint8_t freq;
+	uint16_t freq;
 	uint8_t rssi;
-	struct t2lm_of_tids t2lm_info[T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
+	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
 	uint8_t link_tx_power;              /* Tx power of the STA */
 	uint8_t psd_flag;                   /* Is PSD channel or not */
 	uint8_t psd_eirp;    /* PSD power level */

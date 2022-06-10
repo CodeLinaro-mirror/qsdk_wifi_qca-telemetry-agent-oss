@@ -25,6 +25,7 @@
 #define RFS_STATS_DATA 2
 #define EHTCAP_TXRX_MCS_NSS_IDX_MAX 2
 #define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
+#define MAX_T2LM_INFO 2
 
 /*
    Buffer Format
@@ -63,12 +64,13 @@ enum t2lm_band_caps {
 	T2LM_BAND_INVALID,
 };
 
-enum t2lm_direction {
-	T2LM_DL_DIRECTION,
-	T2LM_UL_DIRECTION,
-	T2LM_BIDI_DIRECTION,
-	T2LM_MAX_VALID_DIRECTION = T2LM_BIDI_DIRECTION,
-	T2LM_INVALID_DIRECTION,
+enum wlan_vendor_t2lm_direction {
+    WLAN_VENDOR_T2LM_INVALID_DIRECTION = 0,
+    WLAN_VENDOR_T2LM_DOWNLINK_DIRECTION = 1,
+    WLAN_VENDOR_T2LM_UPLINK_DIRECTION = 2,
+    WLAN_VENDOR_T2LM_BIDI_DIRECTION = 3,
+    WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION =
+        WLAN_VENDOR_T2LM_BIDI_DIRECTION,
 };
 
 struct agent_peer_stats {
@@ -84,21 +86,21 @@ struct agent_link_stats {
 	uint8_t hw_link_id;
 	uint8_t available_airtime;
 	uint32_t m3_stats;
-	uint8_t m4_stats;
-	int num_peers;
+	uint32_t m4_stats;
+	uint16_t num_peers;
 	struct agent_peer_stats peer_stats[MAX_PEERS];
 };
 
 struct agent_soc_stats {
 	uint8_t soc_id;
-	uint8_t num_peers;
-	int num_links;
+	uint16_t num_peers;
+	uint8_t num_links;
 	struct agent_link_stats link_stats[MAX_MLD_LINKS];
 };
 
 /* Periodic Stats */
 struct relayfs_stats {
-	int num_soc;
+	uint8_t num_soc;
 	struct agent_soc_stats soc_stats[MAX_SOCS];
 };
 
@@ -108,15 +110,16 @@ struct relayfs_stats {
  */
 
 struct link_map_of_tids {
-	enum t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
+	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
 	uint8_t default_link_mapping;
 	uint8_t tid_present[NUM_TIDS]; /* TID present on this link */
 };
 
+
 struct agent_peer_init_stats {
 	uint8_t mld_mac_addr[6];      /* peer MLD mac */
 	uint8_t link_mac_addr[6];     /* peer MLD link mac */
-	struct link_map_of_tids t2lm_info[T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
+	struct link_map_of_tids t2lm_info[MAX_T2LM_INFO]; /* T2LM mapping */
 	enum wlan_vendor_channel_width chan_bw;
 	uint16_t chan_freq;                  /* channel center frequency */
 	uint8_t link_tx_power;               /* tx power of the STA */
@@ -136,13 +139,12 @@ struct agent_link_init_stats {
 struct agent_soc_init_stats {
 	uint8_t soc_id;
 	uint16_t num_peers;
-	/* uint16_t max_peers; */
 	uint8_t num_links;
-	struct agent_link_init_stats link_stats[MAX_MLD_LINKS];
+	struct agent_link_init_stats link_stats[MAX_PDEV_LINKS];
 };
 
 struct relayfs_init_stats {
-	int num_soc;
+	uint8_t num_soc;
 	struct agent_soc_init_stats soc_stats[MAX_SOCS];
 };
 

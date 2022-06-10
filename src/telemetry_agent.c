@@ -37,8 +37,7 @@ static char *print_mac_addr(const uint8_t *mac)
 
 void telemetry_agent_stats_work_periodic(struct work_struct *work) 
 {
-	/* schedule_delayed_work(&g_agent_obj.stats_work, msecs_to_jiffies(STATS_FREQUECY)) */
-	int i, j, k;
+	int i, j;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
 	struct agent_peer_db *peer_db = NULL;
@@ -51,8 +50,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 	struct agent_soc_stats *rfs_soc_stats = NULL;
 	struct agent_link_stats *rfs_link_stats = NULL;
 	struct agent_peer_stats *rfs_peer_stats = NULL;
-
-	printk("Dumping Telemetry data base\n");
+	struct list_head *node;
 
 	memset(&stats_buffer, 0, sizeof(struct telemetry_buffer));
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;
@@ -64,7 +62,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			stats_buffer.header.payload_len);
 
 	num_socs = g_agent_obj.agent_db.num_socs;
-	stats_buffer.u.init_stats.num_soc = num_socs;
+	stats_buffer.u.periodic_stats.num_soc = num_socs;
 
 	for (i = 0; i< num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
@@ -81,7 +79,6 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
 			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
-#endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
 			rfs_link_stats->available_airtime = pdev_stats.available_airtime;
 			rfs_link_stats->m3_stats = (pdev_stats.congestion * 100)/1000000;
@@ -90,23 +87,18 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			else
 				rfs_link_stats->m4_stats = ((pdev_stats.tx_mpdu_failed - pdev_db->tx_mpdu_failed) * 100)/
 							    (pdev_stats.tx_mpdu_total - pdev_db->tx_mpdu_total);
-
+#endif
 			pdev_db->tx_mpdu_failed = pdev_stats.tx_mpdu_failed;
 			pdev_db->tx_mpdu_total = pdev_stats.tx_mpdu_total;
-			/* stats_buffer.u.init_stats.soc_stats[i].link_stats[j].soc_id
-			  = pdev_stats.soc_id; */
 
-			printk("AgentDB-WorkQ> %s: psoc: %p pdev: %p pdev_id: %d\n",
-                    __func__,
-					pdev_db->psoc_obj_ptr ,
-					pdev_db->pdev_obj_ptr, pdev_db->pdev_id
-				  );
 			num_peers = pdev_db->num_peers;
 			num_mlo_peers = 0;
-			for (k = 0; k < num_peers; k++) {
-				peer_db = &pdev_db->peer_db[k];
+
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
-				if (!wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
+				if ((peer_db) && !wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -115,6 +107,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					memcpy(&rfs_peer_stats->peer_link_mac[0],
 				    	peer_stats.peer_link_mac, 6);
 					rfs_peer_stats->airtime_consumption = peer_stats.airtime_consumption;
+#ifdef WLAN_TELEMETRY_STATS_SUPPORT
 					if (!peer_stats.tx_mpdu_total)
 						rfs_peer_stats->m1_stats = 0;
 					else
@@ -125,6 +118,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					else
 						rfs_peer_stats->m2_stats = ((peer_stats.rx_mpdu_retried - peer_db->rx_mpdu_retried) * 100)/
 									    (peer_stats.rx_mpdu_total - peer_db->rx_mpdu_total);
+#endif
 					peer_db->tx_mpdu_total = peer_stats.tx_mpdu_total;
 					peer_db->tx_mpdu_retried = peer_stats.tx_mpdu_retried;
 					peer_db->rx_mpdu_total = peer_stats.rx_mpdu_total;
@@ -133,6 +127,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					num_mlo_peers++;
 				}
 			} /* peer */
+			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
 	} /* soc */
@@ -148,7 +143,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 
 void telemetry_agent_stats_work_init(struct work_struct *work) 
 {
-	int i, j, k;
+	int i, j, idx, tid;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
 	struct agent_peer_db *peer_db = NULL;
@@ -162,6 +157,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	struct agent_soc_init_stats *rfs_soc_stats = NULL;
 	struct agent_link_init_stats *rfs_link_stats = NULL;
 	struct agent_peer_init_stats *rfs_peer_stats = NULL;
+	struct list_head *node;
 
 
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
@@ -173,13 +169,10 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	stats_buffer.header.stats_type = RFS_INIT_DATA;
 	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
 
-	printk("Agent:%s, payloadlen: %d \n", __func__, 
-			stats_buffer.header.payload_len);
-
 	num_socs = g_agent_obj.agent_db.num_socs;
 	stats_buffer.u.init_stats.num_soc = num_socs;
 
-	for (i = 0; i< num_socs; i++) {
+	for (i = 0; i < num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
 		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[i];
 
@@ -191,8 +184,6 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
 
-		printk("AgentDB-WorkQ> %s: psoc: %p psoc_id: %d\n",__func__,
-				psoc_db->psoc_obj_ptr, psoc_db->soc_id);
 		num_pdevs = psoc_db->num_pdevs;
 
 		for (j = 0; j< num_pdevs; j++) {
@@ -202,18 +193,14 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			wifi_driver_get_pdev_info(pdev_db->pdev_obj_ptr, &pdev_stats);
 #endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
-
-			printk("AgentDB-WorkQ> %s: psoc: %p pdev: %p pdev_id: %d\n",
-					__func__,
-					pdev_db->psoc_obj_ptr ,
-					pdev_db->pdev_obj_ptr, pdev_db->pdev_id
-				  );
 			num_peers = pdev_db->num_peers;
 			num_mlo_peers = 0;
-			for (k = 0; k < num_peers; k++) {
-				peer_db = &pdev_db->peer_db[k];
+
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
-				if (!wifi_driver_get_peer_info(peer_db->peer_obj_ptr, &peer_stats))
+				if ((peer_db) && !wifi_driver_get_peer_info(peer_db->peer_obj_ptr, &peer_stats))
 #endif
                 {
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -221,8 +208,25 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 							peer_stats.peer_mld_mac, 6);
 					memcpy(&rfs_peer_stats->link_mac_addr[0],
 							peer_stats.peer_link_mac, 6);
+                    /* T2LM Info */
+					for(idx = 0; idx < MAX_T2LM_INFO; idx++) {
+						rfs_peer_stats->t2lm_info[i].direction =
+							peer_stats.t2lm_info[i].direction;
+						rfs_peer_stats->t2lm_info[i].default_link_mapping =
+							peer_stats.t2lm_info[i].default_link_mapping;
+
+						for (tid = 0; tid < NUM_TIDS; tid++) {
+							rfs_peer_stats->t2lm_info[idx].tid_present[tid] =
+								peer_stats.t2lm_info[i].t2lm_provisioned_links[tid];
+						}
+					}
+
 					rfs_peer_stats->chan_bw = peer_stats.bw;
 					rfs_peer_stats->chan_freq = peer_stats.freq;
+					rfs_peer_stats->link_tx_power = peer_stats.link_tx_power;
+					rfs_peer_stats->psd_flag = peer_stats.psd_flag;
+					rfs_peer_stats->psd_eirp = peer_stats.psd_eirp;
+
 					memcpy(&rfs_peer_stats->tx_mcs_nss_map,
 							&peer_stats.caps.tx_mcs_nss_map,
 							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
@@ -234,13 +238,9 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					num_mlo_peers++;
 				}
 
-				printk("AgentDB - WorkQ> %s: psoc: %p pdev: %p \n peer: %p peer_mac: %s\n",__func__,
-						peer_db->psoc_obj_ptr,
-						peer_db->pdev_obj_ptr,
-						peer_db->peer_obj_ptr,
-						print_mac_addr(&peer_db->peer_mac_addr[0])
-					  );
 			} /* peer */
+
+			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
 	} /* soc */
@@ -254,11 +254,21 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	return;
 }
 
-void telemetry_agent_notify_app_init(void)
+void telemetry_agent_notify_app_init(enum agent_notification_event event)
 {
-	printk("Agent> %s\n", __func__);
-	schedule_delayed_work(&g_agent_obj.stats_work_init, msecs_to_jiffies(1000)); 
-	return;
+    printk("Agent> %s event: %d\n", __func__, event);
+    switch(event) {
+        case AGENT_NOTIFY_EVENT_INIT:
+            schedule_delayed_work(&g_agent_obj.stats_work_init, msecs_to_jiffies(1000));
+            break;
+        case AGENT_NOTIFY_EVENT_DEINIT:
+            cancel_delayed_work_sync(&g_agent_obj.stats_work_init);
+            cancel_delayed_work_sync(&g_agent_obj.stats_work_periodic);
+            break;
+        default:
+            break;
+    }
+    return;
 }
 
 static int remove_buf_file_handler(struct dentry *dentry)
@@ -346,10 +356,6 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 
 {
 	int status = STATUS_SUCCESS;
-	/*
-	 * FIXME: soc_idx:Correct thing is search psoc pointer in local db and retrun index
-	 */
-
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
 	int pdev_idx; 
@@ -367,6 +373,9 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	pdev_db->pdev_obj_ptr = pdev_obj->pdev_back_pointer;
 	pdev_db->pdev_id = pdev_idx;
 	pdev_db->num_peers = 0;
+
+	spin_lock_init(&pdev_db->peer_db_lock);
+	INIT_LIST_HEAD(&(pdev_db->peer_db_list));
 
 	printk("AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
 			pdev_db->psoc_obj_ptr , pdev_obj->psoc_id,
@@ -393,32 +402,31 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
 	struct agent_peer_db *peer_db = NULL;
-	int peer_idx = 0;
 
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
 	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
-	peer_idx = pdev_db->num_peers;
-	peer_db = &pdev_db->peer_db[peer_idx];
 
-	printk(KERN_DEBUG "Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
-			peer_obj->psoc_back_pointer, peer_obj->psoc_id,
-			peer_obj->pdev_back_pointer, peer_obj->pdev_id,
-			peer_obj->peer_back_pointer, print_mac_addr(&peer_obj->peer_mac_addr[0])
-		  );
+	peer_db = kzalloc(sizeof(struct agent_peer_db), GFP_ATOMIC);
+	if (!peer_db) {
+		printk("peer context allocation failed");
+		return -1;
+	}
 
 	peer_db->psoc_obj_ptr = peer_obj->psoc_back_pointer;
 	peer_db->pdev_obj_ptr = peer_obj->pdev_back_pointer;
 	peer_db->peer_obj_ptr = peer_obj->peer_back_pointer;
 
 	memcpy(&peer_db->peer_mac_addr[0], &peer_obj->peer_mac_addr[0], 6);
+	spin_lock_bh(&pdev_db->peer_db_lock);
+	list_add_tail(&peer_db->node, &pdev_db->peer_db_list);
 
 	printk(KERN_DEBUG "AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
 			peer_db->psoc_obj_ptr, peer_obj->psoc_id,
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0])
 		  );
-
 	pdev_db->num_peers++;
+	spin_unlock_bh(&pdev_db->peer_db_lock);
 	return status;
 }
 
@@ -438,7 +446,7 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 
 {
 	int status = STATUS_SUCCESS;
-	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
+	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n",__func__,
 			pdev_obj->psoc_back_pointer, pdev_obj->psoc_id,
 			pdev_obj->pdev_back_pointer, pdev_obj->pdev_id
 		  );
@@ -449,12 +457,39 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_obj *peer_obj)
 {
 	int status = STATUS_SUCCESS;
-	printk(KERN_DEBUG "Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
-			peer_obj->psoc_back_pointer, peer_obj->psoc_id,
-			peer_obj->pdev_back_pointer, peer_obj->pdev_id,
-			peer_obj->peer_back_pointer, print_mac_addr(&peer_obj->peer_mac_addr[0])
-		  );
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct list_head *node;
+	struct list_head *node_remove = NULL;
+	struct agent_peer_db *peer_db = NULL;
+	struct agent_peer_db *peer_db_remove = NULL;
 
+	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
+	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
+	spin_lock_bh(&pdev_db->peer_db_lock);
+		list_for_each(node, &pdev_db->peer_db_list) {
+			peer_db = list_entry(node, struct agent_peer_db, node);
+			if (!peer_db) {
+				printk("Peer ctx is null");
+				continue;
+			}
+
+			if(MAC_ADDR_EQ(&peer_obj->peer_mac_addr[0], &peer_db->peer_mac_addr[0])) {
+				printk("%s: Node found\n", __func__);
+				node_remove = node;
+				peer_db_remove = peer_db;
+				break;
+			}
+		}
+
+	if(node_remove && peer_db_remove) {
+		list_del(node);
+		kfree(peer_db_remove);
+	} else {
+		printk("%s: Node not found\n", __func__);
+	}
+	pdev_db->num_peers--;
+	spin_unlock_bh(&pdev_db->peer_db_lock);
 	return status;
 }
 
@@ -481,7 +516,7 @@ struct telemetry_agent_ops agent_ops = {
 	agent_peer_destroy_handler:telemetry_agent_peer_destroy_handler,
 	agent_set_param:telemetry_agent_set_param_handler,
 	agent_get_param:telemetry_agent_get_param_handler,
-	agent_notify_app_init:telemetry_agent_notify_app_init,
+	agent_notify_app_event:telemetry_agent_notify_app_init,
 
 	/* SAWF-ops */
 	sawf_set_sla_dtct_cfg: telemetry_sawf_set_sla_detect_cfg,
