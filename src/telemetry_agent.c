@@ -51,7 +51,6 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 	struct agent_soc_stats *rfs_soc_stats = NULL;
 	struct agent_link_stats *rfs_link_stats = NULL;
 	struct agent_peer_stats *rfs_peer_stats = NULL;
-	uint8_t m1_stats, m2_stats, m4_stats;
 
 	printk("Dumping Telemetry data base\n");
 
@@ -84,12 +83,16 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 #endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
-            rfs_link_stats->available_airtime = pdev_stats.available_airtime;
-			pdev_db->m3_stats = pdev_stats.congestion;
-            rfs_link_stats->m3_stats = pdev_db->m3_stats;
-			m4_stats = (pdev_stats.tx_mpdu_failed)/(pdev_stats.tx_mpdu_total);
-            rfs_link_stats->m4_stats = m4_stats - pdev_db->m4_stats;
-			pdev_db->m4_stats = m4_stats;
+			rfs_link_stats->available_airtime = pdev_stats.available_airtime;
+			rfs_link_stats->m3_stats = (pdev_stats.congestion * 100)/1000000;
+			if (!pdev_stats.tx_mpdu_total)
+				rfs_link_stats->m4_stats = 0;
+			else
+				rfs_link_stats->m4_stats = ((pdev_stats.tx_mpdu_failed - pdev_db->tx_mpdu_failed) * 100)/
+							    (pdev_stats.tx_mpdu_total - pdev_db->tx_mpdu_total);
+
+			pdev_db->tx_mpdu_failed = pdev_stats.tx_mpdu_failed;
+			pdev_db->tx_mpdu_total = pdev_stats.tx_mpdu_total;
 			/* stats_buffer.u.init_stats.soc_stats[i].link_stats[j].soc_id
 			  = pdev_stats.soc_id; */
 
@@ -98,28 +101,36 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					pdev_db->psoc_obj_ptr ,
 					pdev_db->pdev_obj_ptr, pdev_db->pdev_id
 				  );
-		num_peers = pdev_db->num_peers;
+			num_peers = pdev_db->num_peers;
 			num_mlo_peers = 0;
 			for (k = 0; k < num_peers; k++) {
 				peer_db = &pdev_db->peer_db[k];
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
 				if (!wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
 #endif
-                {
-				    rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
-				    memcpy(&rfs_peer_stats->peer_mld_mac[0],
-					    	peer_stats.peer_mld_mac, 6);
-				    memcpy(&rfs_peer_stats->peer_link_mac[0],
+				{
+					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
+					memcpy(&rfs_peer_stats->peer_mld_mac[0],
+					       peer_stats.peer_mld_mac, 6);
+					memcpy(&rfs_peer_stats->peer_link_mac[0],
 				    	peer_stats.peer_link_mac, 6);
-                    rfs_peer_stats->airtime_consumption = peer_stats.airtime_consumption;
-					m1_stats = (peer_stats.tx_mpdu_retried)/(peer_stats.tx_mpdu_total);
-					m2_stats = (peer_stats.rx_mpdu_retried)/(peer_stats.rx_mpdu_total);
-                    rfs_peer_stats->m1_stats = m1_stats - peer_db->m1_stats;
-                    rfs_peer_stats->m2_stats = m2_stats - peer_db->m2_stats;
-					peer_db->m1_stats = m1_stats;
-					peer_db->m2_stats = m1_stats;
-                    rfs_peer_stats->rssi = peer_stats.rssi;
-				    num_mlo_peers++;
+					rfs_peer_stats->airtime_consumption = peer_stats.airtime_consumption;
+					if (!peer_stats.tx_mpdu_total)
+						rfs_peer_stats->m1_stats = 0;
+					else
+						rfs_peer_stats->m1_stats = ((peer_stats.tx_mpdu_retried - peer_db->tx_mpdu_retried) * 100)/
+									    (peer_stats.tx_mpdu_total - peer_db->tx_mpdu_total);
+					if (!peer_stats.rx_mpdu_total)
+						rfs_peer_stats->m2_stats = 0;
+					else
+						rfs_peer_stats->m2_stats = ((peer_stats.rx_mpdu_retried - peer_db->rx_mpdu_retried) * 100)/
+									    (peer_stats.rx_mpdu_total - peer_db->rx_mpdu_total);
+					peer_db->tx_mpdu_total = peer_stats.tx_mpdu_total;
+					peer_db->tx_mpdu_retried = peer_stats.tx_mpdu_retried;
+					peer_db->rx_mpdu_total = peer_stats.rx_mpdu_total;
+					peer_db->rx_mpdu_retried = peer_stats.rx_mpdu_retried;
+					rfs_peer_stats->rssi = peer_stats.rssi;
+					num_mlo_peers++;
 				}
 			} /* peer */
 			rfs_link_stats->num_peers = num_mlo_peers;

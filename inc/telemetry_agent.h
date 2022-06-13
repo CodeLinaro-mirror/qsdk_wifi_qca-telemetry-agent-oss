@@ -36,16 +36,18 @@ struct agent_peer_db {
     void *pdev_obj_ptr;
     void *psoc_obj_ptr;
     uint8_t peer_mac_addr[6];
-    uint8_t m1_stats;
-    uint8_t m2_stats;
+    uint32_t tx_mpdu_retried;
+    uint32_t tx_mpdu_total;
+    uint32_t rx_mpdu_retried;
+    uint32_t rx_mpdu_total;
 };
 
 struct agent_pdev_db {
     void *pdev_obj_ptr;
     void *psoc_obj_ptr;
     uint8_t pdev_id;
-    uint32_t m3_stats;
-    uint8_t m4_stats;
+    uint32_t tx_mpdu_failed;
+    uint32_t tx_mpdu_total;
     int num_peers;
 	/* FIXME: convert to list */
     struct agent_peer_db peer_db[MAX_PEERS];
