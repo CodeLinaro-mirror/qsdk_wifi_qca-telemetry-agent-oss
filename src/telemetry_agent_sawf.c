@@ -366,6 +366,8 @@ telemetry_get_tput_stats(struct telemetry_sawf_peer_ctx *peer,
 			 uint8_t svc_id,
 			 uint8_t tid, uint8_t queue)
 {
+	wlan_sawf_get_tput_stats(peer->soc, peer->sawf_ctx, in_bytes, in_cnt,
+				 tx_bytes, tx_cnt, tid, queue);
 	return 0;
 }
 
@@ -376,6 +378,9 @@ telemetry_get_drop_stats_num_sec(struct telemetry_sawf_peer_ctx *peer,
 				    uint8_t svc_id,
 				    uint8_t tid, uint8_t queue)
 {
+	wlan_sawf_get_drop_stats(peer->soc, peer->sawf_ctx,
+				 pass, drop, drop_ttl,
+				 tid, queue);
 	return 0;
 }
 
@@ -386,6 +391,10 @@ telemetry_get_mpdu_stats_num_sec(struct telemetry_sawf_peer_ctx *peer,
 				 uint8_t svc_id,
 				 uint8_t tid, uint8_t queue)
 {
+	wlan_sawf_get_mpdu_stats(peer->soc, peer->sawf_ctx,
+				 svc_int_pass, svc_int_fail,
+				 burst_pass, burst_fail,
+				 tid, queue);
 	return 0;
 }
 
