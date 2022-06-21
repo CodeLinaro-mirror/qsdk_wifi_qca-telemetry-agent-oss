@@ -419,7 +419,7 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->delay_bound;
 	if (threshold && sla_detect->delay_bound) {
 		total = pass + fail;
-		pass_p = (total - fail * 100)/(pass + fail);
+		pass_p = div_u64((total - fail * 100), (pass + fail));
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA Delay Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
@@ -453,7 +453,7 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 	threshold = sla_param->msdu_ttl;
 	if (threshold && sla_detect->msdu_ttl) {
-		pass_p = (total - drop_ttl * 100)/total;
+		pass_p = div_u64((total - drop_ttl * 100), total);
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA MSDU TTL Loss Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
@@ -469,7 +469,7 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 		threshold = sla_param->msdu_rate_loss;
 		/* Number of packets drop allowed */
 		num_drops = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * total;
-		if (num_drops && (((drop * 100)/num_drops) < threshold)) {
+		if (num_drops && div_u64((drop * 100), num_drops) < threshold) {
 			pr_sawf_err("SLA MSDU Loss Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
@@ -502,7 +502,7 @@ telemetry_detect_breach_peer_mov_avg(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->delay_bound;
 	if (threshold && sla_detect->delay_bound) {
 		delay_bound = svc_param->delay_bound * DELAY_BOUND_UNIT;
-		max_delay = delay_bound + ((delay_bound *(100 - threshold))/100) ;
+		max_delay = delay_bound + div_u64((delay_bound *(100 - threshold)),100) ;
 		if (mov_avg_delay > max_delay) {
 			pr_sawf_err("SLA Delay Breach Detected peer service ID: %d",
 				    svc_id);
@@ -559,7 +559,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	if (threshold && sla_detect->min_thruput_rate) {
 		throughput = svc_param->min_thruput_rate * THROUGHPUT_UNIT;
 		if (tput->in_rate > throughput &&
-		    tput->eg_rate < ((throughput * threshold)/100)) {
+		    tput->eg_rate < div_u64((throughput * threshold), 100)) {
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
 			pr_sawf_err("Configured Min Throughput: %d", throughput);
@@ -571,7 +571,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	if (threshold && sla_detect->max_thruput_rate) {
 		throughput = sla_param->max_thruput_rate * THROUGHPUT_UNIT;
 		if (in_rate > svc_param->max_thruput_rate &&
-		    eg_rate < (throughput * threshold)/100) {
+		    eg_rate < div_u64((throughput * threshold), 100)) {
 			pr_sawf_err("SLA Max Throughput Breach Detected peer service ID:%d",
 				    svc_id);
 			pr_sawf_err("Configured Max Throughput: %d", throughput);
@@ -652,7 +652,7 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->burst_size;
 	if (threshold && sla_detect->burst_size) {
 		total = curr_burst_pass + curr_burst_fail;
-		pass_p = ((total - curr_burst_fail) * 100)/(total);
+		pass_p = div_u64(((total - curr_burst_fail) * 100), total);
 		if (curr_svc_int_fail && pass_p < threshold) {
 			pr_sawf_err("SLA Burst Size(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
@@ -666,7 +666,7 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->service_interval;
 	if (threshold && sla_detect->service_interval) {
 		total = curr_svc_int_pass + curr_svc_int_fail;
-		pass_p = ((total - curr_svc_int_fail) * 100)/(total);
+		pass_p = div_u64(((total - curr_svc_int_fail) * 100), total);
 		if (curr_svc_int_fail && pass_p < threshold) {
 			pr_sawf_err("SLA Service Interval(per_s_sec) Breach Detected peer service ID: %d",
 				    svc_id);
@@ -679,7 +679,7 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 
 	threshold = sla_param->msdu_ttl;
 	if (threshold && sla_detect->msdu_ttl) {
-		pass_p = ((curr_total - curr_drop_ttl) * 100)/curr_total;
+		pass_p = div_u64(((curr_total - curr_drop_ttl) * 100), curr_total);
 		if (curr_drop_ttl && pass_p < threshold) {
 			pr_sawf_err("SLA MSDU TTL(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
@@ -693,7 +693,7 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->msdu_rate_loss;
 	if (threshold && sla_detect->msdu_rate_loss) {
 		num_drops = svc_param->msdu_rate_loss * MSDU_LOSS_UNIT * curr_total;
-		if (num_drops && (((curr_drop * 100)/num_drops) < threshold)) {
+		if (num_drops && div_u64((curr_drop * 100), num_drops) < threshold) {
 			pr_sawf_err("SLA MSDU Loss(per_x_sec) Breach Detected peer service ID: %d",
 				    svc_id);
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
@@ -852,7 +852,7 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 		//pr_sawf_dbg("DELAY: Total delay for window(%lld) is %lld", delay->cur_window, delay->windows_total);
 		delay->cur_window++;
 	} else if (delay->cur_window == max_win) {
-		delay->mov_avg = delay->windows_total/max_win;
+		delay->mov_avg = div_u64(delay->windows_total, max_win);
 		//pr_sawf_dbg("Delay: Max window: %d", max_win);
 		//pr_sawf_dbg("Delay: Average delay for window(%lld) is %lld", delay->windows_total, delay->mov_avg);
 		//Detect moving average SLA
