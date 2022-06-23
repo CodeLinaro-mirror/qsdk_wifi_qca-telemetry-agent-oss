@@ -153,6 +153,7 @@ struct telemetry_sawf_sla_detect_cfg {
  * @per_sec_timer: per-second timer list
  * @num_sec_timer: per-n-second timer list
  * @peer_list: list of peers
+ * @lock: lock to protect the peer list
  */
 struct telemetry_sawf_ctx {
 	struct telemetry_sawf_mov_avg_params mov_avg;
@@ -163,6 +164,7 @@ struct telemetry_sawf_ctx {
 	struct timer_list per_sec_timer;
 	struct timer_list num_sec_timer;
 	struct list_head peer_list;
+	spinlock_t peer_list_lock;
 };
 
 /**

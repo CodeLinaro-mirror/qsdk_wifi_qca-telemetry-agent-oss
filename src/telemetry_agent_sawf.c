@@ -33,6 +33,7 @@ int telemetry_sawf_init_ctx(void)
 	}
 	pr_sawf_dbg("SAWF ctx is initialized");
 	INIT_LIST_HEAD(&(g_telemetry_sawf->peer_list));
+	spin_lock_init(&g_telemetry_sawf->peer_list_lock);
 	return 0;
 }
 
@@ -48,7 +49,7 @@ void telemetry_sawf_free_ctx(void)
 
 struct telemetry_sawf_ctx *telemetry_sawf_get_ctx(void)
 {
-	if(g_telemetry_sawf)
+	if (g_telemetry_sawf)
 		return g_telemetry_sawf;
 	else
 		return NULL;
@@ -314,10 +315,12 @@ void *telemetry_sawf_alloc_peer(void *soc, void *sawf_stats_ctx,
 
 	set_bit(host_q_id, peer_msduq->active_queue);
 
+	spin_lock_bh(&g_telemetry_sawf->peer_list_lock);
 	if (list_empty(&g_telemetry_sawf->peer_list))
 		telemetry_sawf_init_sla_timer();
 
 	list_add_tail(&peer_ctx->node, &g_telemetry_sawf->peer_list);
+	spin_unlock_bh(&g_telemetry_sawf->peer_list_lock);
 
 	return peer_ctx;
 }
@@ -347,11 +350,13 @@ void telemetry_sawf_free_peer(void *telemetry_ctx)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 
+	spin_lock_bh(&g_telemetry_sawf->peer_list_lock);
 	list_del(&(peer_ctx->node));
 
 	if (list_empty(&g_telemetry_sawf->peer_list))
 		telemetry_sawf_free_sla_timer();
 
+	spin_unlock_bh(&g_telemetry_sawf->peer_list_lock);
 	pr_sawf_dbg("Free SAWF ctx %pK", peer_ctx);
 	telemtry_sawf_delay_window_free(peer_ctx->mov_window);
 	peer_ctx->mov_window = NULL;
@@ -759,6 +764,7 @@ static int telemetry_detect_breach(enum telemetry_sawf_sla_detect_type type)
 		return -1;
 	}
 
+	spin_lock_bh(&g_telemetry_sawf->peer_list_lock);
 	list_for_each(node, &sawf_ctx->peer_list) {
 		peer = list_entry(node, struct telemetry_sawf_peer_ctx, node);
 		if (!peer) {
@@ -777,6 +783,7 @@ static int telemetry_detect_breach(enum telemetry_sawf_sla_detect_type type)
 			break;
 		}
 	}
+	spin_unlock_bh(&g_telemetry_sawf->peer_list_lock);
 	return 0;
 }
 
