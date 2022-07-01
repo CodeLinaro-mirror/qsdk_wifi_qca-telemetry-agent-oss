@@ -256,19 +256,20 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 void telemetry_agent_notify_app_init(enum agent_notification_event event)
 {
-    printk("Agent> %s event: %d\n", __func__, event);
-    switch(event) {
-        case AGENT_NOTIFY_EVENT_INIT:
-            schedule_delayed_work(&g_agent_obj.stats_work_init, msecs_to_jiffies(1000));
-            break;
-        case AGENT_NOTIFY_EVENT_DEINIT:
-            cancel_delayed_work_sync(&g_agent_obj.stats_work_init);
-            cancel_delayed_work_sync(&g_agent_obj.stats_work_periodic);
-            break;
-        default:
-            break;
-    }
-    return;
+	printk("Agent> %s event: %d\n", __func__, event);
+	switch(event) {
+		case AGENT_NOTIFY_EVENT_INIT:
+			schedule_delayed_work(&g_agent_obj.stats_work_init, msecs_to_jiffies(1000));
+			break;
+		case AGENT_NOTIFY_EVENT_DEINIT:
+			relay_reset(g_agent_obj.rfs_channel);
+			cancel_delayed_work_sync(&g_agent_obj.stats_work_init);
+			cancel_delayed_work_sync(&g_agent_obj.stats_work_periodic);
+			break;
+		default:
+			break;
+	}
+	return;
 }
 
 static int remove_buf_file_handler(struct dentry *dentry)
