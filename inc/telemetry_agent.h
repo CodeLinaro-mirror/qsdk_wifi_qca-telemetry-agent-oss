@@ -34,6 +34,9 @@ agent and APP */
 #define STATS_FREQUECY  5000 /*in milli seconds */
 #define WLAN_TELEMETRY_STATS_SUPPORT 1
 
+#define MAX_PDEV_LINKS_DB 3
+#define MAX_SOCS_DB 5
+
 #define MAC_ADDR_EQ(a1, a2)   (memcmp(a1, a2, 6) == 0)
 struct agent_peer_db {
 	struct list_head node;
@@ -62,12 +65,12 @@ struct agent_soc_db {
 	void *psoc_obj_ptr;
 	uint8_t soc_id;
 	uint8_t num_pdevs;
-	struct agent_pdev_db pdev_db[MAX_PDEV_LINKS];
+	struct agent_pdev_db pdev_db[MAX_PDEV_LINKS_DB];
 };
 
 struct agent_telemtry_db {
 	uint8_t num_socs;
-	struct agent_soc_db psoc_db[MAX_SOCS];
+	struct agent_soc_db psoc_db[MAX_SOCS_DB];
 };
 
 struct telemetry_agent_object {
