@@ -32,6 +32,7 @@ agent and APP */
 #define AGENT_MAX_BUFFER_SIZE (85*1024)
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  5000 /*in milli seconds */
+#define WLAN_TELEMETRY_STATS_SUPPORT 1
 
 #define MAC_ADDR_EQ(a1, a2)   (memcmp(a1, a2, 6) == 0)
 struct agent_peer_db {
