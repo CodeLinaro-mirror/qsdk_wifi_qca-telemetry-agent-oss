@@ -58,7 +58,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 	stats_buffer.header.stats_type = RFS_STATS_DATA;
 	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
 
-	printk("Agent > %s len: %d\n", __func__,
+	ta_print_debug("Agent > %s len: %d\n", __func__,
 			stats_buffer.header.payload_len);
 
 	num_socs = g_agent_obj.agent_db.num_socs;
@@ -256,7 +256,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 void telemetry_agent_notify_app_init(enum agent_notification_event event)
 {
-	printk("Agent> %s event: %d\n", __func__, event);
+	ta_print_debug("Agent> %s event: %d\n", __func__, event);
 	switch(event) {
 		case AGENT_NOTIFY_EVENT_INIT:
 			schedule_delayed_work(&g_agent_obj.stats_work_init, msecs_to_jiffies(1000));
@@ -337,14 +337,14 @@ static int telemetry_agent_psoc_create_handler(void *arg, struct agent_psoc_obj 
 	int soc_idx = g_agent_obj.agent_db.num_socs;
 	struct agent_soc_db *psoc_db = &g_agent_obj.agent_db.psoc_db[soc_idx];
 
-	printk("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
+	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
 
 	psoc_db->psoc_obj_ptr = psoc_obj->psoc_back_pointer;
 	psoc_db->soc_id = soc_idx;
 	psoc_db->num_pdevs = 0;
 
-	printk("AgentDB> %s: psoc: %p psoc_id: %d\n",__func__,
+	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_db->psoc_obj_ptr, psoc_db->soc_id);
 
 	g_agent_obj.agent_db.num_socs++;
@@ -365,7 +365,7 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	pdev_idx = psoc_db->num_pdevs;
 	pdev_db  = &psoc_db->pdev_db[pdev_idx];
 
-	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
+	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
 			pdev_obj->psoc_back_pointer, pdev_obj->psoc_id,
 			pdev_obj->pdev_back_pointer, pdev_obj->pdev_id
 		  );
@@ -378,7 +378,7 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	spin_lock_init(&pdev_db->peer_db_lock);
 	INIT_LIST_HEAD(&(pdev_db->peer_db_list));
 
-	printk("AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
+	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d\n",__func__,
 			pdev_db->psoc_obj_ptr , pdev_obj->psoc_id,
 			pdev_db->pdev_obj_ptr, pdev_db->pdev_id
 		  );
@@ -409,7 +409,7 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 
 	peer_db = kzalloc(sizeof(struct agent_peer_db), GFP_ATOMIC);
 	if (!peer_db) {
-		printk("peer context allocation failed");
+		ta_print_error("peer context allocation failed");
 		return -1;
 	}
 
@@ -421,7 +421,7 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	spin_lock_bh(&pdev_db->peer_db_lock);
 	list_add_tail(&peer_db->node, &pdev_db->peer_db_list);
 
-	printk(KERN_DEBUG "AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
+	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n peer: %p peer_mac: %s\n",__func__,
 			peer_db->psoc_obj_ptr, peer_obj->psoc_id,
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0])
@@ -436,7 +436,7 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 
 {
 	int status = STATUS_SUCCESS;
-	printk("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
+	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
 
 
@@ -447,7 +447,7 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 
 {
 	int status = STATUS_SUCCESS;
-	printk("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n",__func__,
+	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n",__func__,
 			pdev_obj->psoc_back_pointer, pdev_obj->psoc_id,
 			pdev_obj->pdev_back_pointer, pdev_obj->pdev_id
 		  );
@@ -471,12 +471,11 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		list_for_each(node, &pdev_db->peer_db_list) {
 			peer_db = list_entry(node, struct agent_peer_db, node);
 			if (!peer_db) {
-				printk("Peer ctx is null");
+				ta_print_error("Peer ctx is null");
 				continue;
 			}
 
 			if(MAC_ADDR_EQ(&peer_obj->peer_mac_addr[0], &peer_db->peer_mac_addr[0])) {
-				printk("%s: Node found\n", __func__);
 				node_remove = node;
 				peer_db_remove = peer_db;
 				break;
@@ -487,7 +486,7 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		list_del(node);
 		kfree(peer_db_remove);
 	} else {
-		printk("%s: Node not found\n", __func__);
+		ta_print_error("%s: Node not found\n", __func__);
 	}
 	pdev_db->num_peers--;
 	spin_unlock_bh(&pdev_db->peer_db_lock);
@@ -543,6 +542,7 @@ static int telemetry_agent_init_module(void)
 	if(telemetry_agent_init_relayfs(&g_agent_obj) != STATUS_SUCCESS) {
 		return -EPERM;
 	}
+	g_agent_obj.debug_mask = TA_PRINT_ERROR;
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_init, telemetry_agent_stats_work_init);
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_periodic, telemetry_agent_stats_work_periodic);
 	telemetry_sawf_init_ctx();

@@ -38,6 +38,30 @@ agent and APP */
 #define MAX_SOCS_DB 5
 
 #define MAC_ADDR_EQ(a1, a2)   (memcmp(a1, a2, 6) == 0)
+
+#define TA_PRINT_DEBUG 0x1
+#define TA_PRINT_INFO  0x2
+#define TA_PRINT_ERROR 0x4
+#define TA_PRINT_MASK(mask)  (g_agent_obj.debug_mask & mask)
+
+#define ta_print_info(args...) do { \
+    if (TA_PRINT_MASK(TA_PRINT_INFO)) {  \
+        printk(args);    \
+    }                    \
+} while (0)
+
+#define ta_print_debug(args...) do { \
+    if (TA_PRINT_MASK(TA_PRINT_DEBUG)) {  \
+        printk(args);    \
+    }                    \
+} while (0)
+
+#define ta_print_error(args...) do { \
+    if (TA_PRINT_MASK(TA_PRINT_ERROR)) {  \
+        printk(args);    \
+    }                    \
+} while (0)
+
 struct agent_peer_db {
 	struct list_head node;
 	void *peer_obj_ptr;
@@ -86,6 +110,7 @@ struct telemetry_agent_object {
 	struct delayed_work stats_work_periodic;
 	/* pdev and peer objects */
 	struct agent_telemtry_db agent_db;
+	uint32_t debug_mask;
 };
 
 
