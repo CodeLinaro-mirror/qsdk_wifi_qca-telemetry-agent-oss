@@ -266,7 +266,7 @@ uint64_t *telemtry_sawf_delay_window_alloc(void)
 	uint32_t window_size;
 
 	mov_avg_param = telemetry_sawf_get_mov_avg_param();
-	window_size = mov_avg_param->window * sizeof(uint64_t) * SAWF_MAX_TID * SAWF_MAXQ_PTID ;
+	window_size = mov_avg_param->window * sizeof(uint64_t) * SAWF_MAX_QUEUES;
 
 	mov_window_ptr = kzalloc(window_size, GFP_ATOMIC);
 	if (mov_window_ptr)
@@ -338,6 +338,7 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx, uint8_t host_q_id,
 	peer_msduq->msduq[host_q_id].tid = tid;
 	peer_msduq->msduq_map[tid][msduq] = host_q_id;
 
+	set_bit(host_q_id, peer_msduq->active_queue);
 	pr_sawf_info("Host Q Idx: %d | TID: %d | Queue ID: %d|",
 		     peer_msduq->msduq[host_q_id].htt_msduq,
 		     peer_msduq->msduq[host_q_id].tid = tid,
@@ -368,11 +369,10 @@ static int
 telemetry_get_tput_stats(struct telemetry_sawf_peer_ctx *peer,
 			 uint64_t *in_bytes, uint64_t *in_cnt,
 			 uint64_t *tx_bytes, uint64_t *tx_cnt,
-			 uint8_t svc_id,
-			 uint8_t tid, uint8_t queue)
+			 uint8_t svc_id, uint8_t queue)
 {
 	wlan_sawf_get_tput_stats(peer->soc, peer->sawf_ctx, in_bytes, in_cnt,
-				 tx_bytes, tx_cnt, tid, queue);
+				 tx_bytes, tx_cnt, 0, queue);
 	return 0;
 }
 
@@ -381,11 +381,10 @@ telemetry_get_drop_stats_num_sec(struct telemetry_sawf_peer_ctx *peer,
 				    uint64_t *pass, uint64_t *drop,
 				    uint64_t *drop_ttl,
 				    uint8_t svc_id,
-				    uint8_t tid, uint8_t queue)
+				    uint8_t queue)
 {
 	wlan_sawf_get_drop_stats(peer->soc, peer->sawf_ctx,
-				 pass, drop, drop_ttl,
-				 tid, queue);
+				 pass, drop, drop_ttl, 0, queue);
 	return 0;
 }
 
@@ -393,20 +392,17 @@ static int
 telemetry_get_mpdu_stats_num_sec(struct telemetry_sawf_peer_ctx *peer,
 				 uint64_t *svc_int_pass, uint64_t *svc_int_fail,
 				 uint64_t *burst_pass, uint64_t *burst_fail,
-				 uint8_t svc_id,
-				 uint8_t tid, uint8_t queue)
+				 uint8_t svc_id, uint8_t queue)
 {
 	wlan_sawf_get_mpdu_stats(peer->soc, peer->sawf_ctx,
 				 svc_int_pass, svc_int_fail,
-				 burst_pass, burst_fail,
-				 tid, queue);
+				 burst_pass, burst_fail, 0, queue);
 	return 0;
 }
 
 static int
 telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
-				     uint8_t svc_id,
-				     uint8_t tid, uint8_t queue,
+				     uint8_t svc_id, uint8_t queue,
 				     uint64_t pass, uint64_t fail)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
@@ -440,8 +436,7 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 static int
 telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
-				     uint8_t svc_id,
-				     uint8_t tid, uint8_t queue,
+				     uint8_t svc_id, uint8_t queue,
 				     uint64_t total, uint64_t drop,
 				     uint64_t drop_ttl)
 {
@@ -487,8 +482,7 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 static int
 telemetry_detect_breach_peer_mov_avg(struct telemetry_sawf_peer_ctx *peer,
-				     uint8_t svc_id,
-				     uint8_t tid, uint8_t queue,
+				     uint8_t svc_id, uint8_t queue,
 				     uint64_t mov_avg_delay)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
@@ -524,7 +518,7 @@ telemetry_detect_breach_peer_mov_avg(struct telemetry_sawf_peer_ctx *peer,
 static int
 telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 				     uint8_t svc_id,
-				     uint8_t tid, uint8_t queue)
+				     uint8_t queue)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_throughput *tput;
@@ -543,9 +537,9 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_PER_SECOND];
 
 	telemetry_get_tput_stats(peer, &in_bytes, &in_cnt,
-				 &tx_bytes, &tx_cnt, svc_id, tid, queue);
+				 &tx_bytes, &tx_cnt, svc_id, queue);
 
-	tput = &peer->stats[tid][queue].tx.throughput;
+	tput = &peer->stats[queue].tx.throughput;
 	in_rate = in_bytes - tput->last_in_bytes;
 	eg_rate = tx_bytes - tput->last_bytes;
 
@@ -590,7 +584,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 
 static int
 telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
-				     uint8_t svc_id, uint8_t tid, uint8_t queue)
+				     uint8_t svc_id, uint8_t queue)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_drops *msdu_drop;
@@ -619,13 +613,13 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	telemetry_get_mpdu_stats_num_sec(peer,
 					 &svc_int_pass, &svc_int_fail,
 					 &burst_pass, &burst_fail,
-					 svc_id, tid, queue);
+					 svc_id, queue);
 
-	burst = &peer->stats[tid][queue].tx.burst_size;
+	burst = &peer->stats[queue].tx.burst_size;
 	curr_burst_pass = burst_pass - burst->last_success;
 	curr_burst_fail = burst_fail - burst->last_failure;
 
-	svc_int = &peer->stats[tid][queue].tx.service_interval;
+	svc_int = &peer->stats[queue].tx.service_interval;
 	curr_svc_int_pass = svc_int_pass - svc_int->last_success;
 	curr_svc_int_fail = svc_int_fail - svc_int->last_failure;
 
@@ -637,9 +631,9 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	telemetry_get_drop_stats_num_sec(peer,
 					 &pass, &drop, &drop_ttl,
 					 svc_id,
-					 tid, queue);
+					 queue);
 
-	msdu_drop = &peer->stats[tid][queue].tx.msdu_drop;
+	msdu_drop = &peer->stats[queue].tx.msdu_drop;
 	curr_total = pass - msdu_drop->last_xmit_cnt_seconds;
 	curr_drop = drop - msdu_drop->last_drop_cnt_seconds;
 	curr_drop_ttl = drop_ttl - msdu_drop->last_ttl_drop_cnt_seconds;
@@ -716,7 +710,6 @@ telemetry_detect_breach_peer(struct telemetry_sawf_peer_ctx *peer,
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct peer_sawf_queue *peer_queue;
 	uint8_t bit, svc_id;
-	uint8_t tid, queue;
 
 	if (!peer) {
 		pr_sawf_err("Peer ctx is null");
@@ -731,18 +724,16 @@ telemetry_detect_breach_peer(struct telemetry_sawf_peer_ctx *peer,
 
 	peer_queue = &peer->peer_msduq;
 	for_each_set_bit(bit, peer_queue->active_queue, SAWF_MAX_QUEUES) {
-		tid = peer_queue->msduq[bit].tid;
-		queue = peer_queue->msduq[bit].htt_msduq;
 		svc_id = peer_queue->msduq[bit].svc_id;
 
 		switch (type) {
 		case SAWF_SLA_DETECT_PER_SECOND:
 			telemetry_detect_breach_peer_per_sec(peer, svc_id,
-							     tid, queue);
+							     bit);
 			break;
 		case SAWF_SLA_DETECT_NUM_SECOND:
 			telemetry_detect_breach_peer_num_sec(peer, svc_id,
-							     tid, queue);
+							     bit);
 			break;
 		default:
 			break;
@@ -794,29 +785,26 @@ int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid, uint8_t q
 	uint64_t curr_success, curr_failure;
 	struct telemetry_sawf_stats *stats;
 	struct sawf_msduq *msduq;
-	uint8_t msduq_id;
 
-	stats = &peer_ctx->stats[tid][queue];
+	stats = &peer_ctx->stats[queue];
 
 	curr_success = pass - stats->delay.last_success;
 	curr_failure = fail - stats->delay.last_failure;
 
-	msduq_id = peer_ctx->peer_msduq.msduq_map[tid][queue];
-	msduq = &peer_ctx->peer_msduq.msduq[msduq_id];
+	msduq = &peer_ctx->peer_msduq.msduq[queue];
 	telemetry_detect_breach_peer_delay_num_pkt(peer_ctx, msduq->svc_id,
 						   curr_success, curr_failure,
-						   tid, queue);
+						   queue);
 
 	return 0;
 }
 
 static inline
-uint64_t *telemetry_get_mov_window_offset(void *telemetry_ctx, uint8_t tid,
+uint64_t *telemetry_get_mov_window_offset(void *telemetry_ctx,
 					  uint8_t queue,
 					  uint32_t curr_win)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx;
-	uint32_t offset;
 	uint32_t max_win;
 	uint64_t *mov_win_start;
 	uint64_t *queue_offset;
@@ -825,9 +813,8 @@ uint64_t *telemetry_get_mov_window_offset(void *telemetry_ctx, uint8_t tid,
 	peer_ctx = telemetry_ctx;
 	max_win = g_telemetry_sawf->mov_avg.window;
 	mov_win_start = peer_ctx->mov_window;
-	offset = ((tid * SAWF_MAXQ_PTID) + queue);
-	queue_offset = mov_win_start  + (offset * sizeof(uint64_t) * max_win);
-	q_win_offest = queue_offset + (curr_win* sizeof(uint64_t));
+	queue_offset = mov_win_start  + (queue * sizeof(uint64_t) * max_win);
+	q_win_offest = queue_offset + (curr_win * sizeof(uint64_t));
 
 	return q_win_offest;
 }
@@ -843,16 +830,15 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 	struct telemetry_sawf_delay *delay;
 	uint32_t curr_win;
 	struct sawf_msduq *msduq;
-	uint8_t msduq_id;
 
-	stats = &peer_ctx->stats[tid][queue];
+	stats = &peer_ctx->stats[queue];
 	delay = &stats->delay;
 	max_win = g_telemetry_sawf->mov_avg.window;
 
 	if (delay->cur_window < max_win) {
 		curr_win = delay->cur_window;
 		q_window = telemetry_get_mov_window_offset(telemetry_ctx,
-							   tid, queue,
+							   queue,
 							   curr_win);
 		*q_window = window_delay;
 		delay->windows_total = delay->windows_total + window_delay;
@@ -865,17 +851,16 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 		//Detect moving average SLA
 		delay->cur_window = 0;
 		delay->windows_total = 0;
-		msduq_id = peer_ctx->peer_msduq.msduq_map[tid][queue];
-		msduq = &peer_ctx->peer_msduq.msduq[msduq_id];
+		msduq = &peer_ctx->peer_msduq.msduq[queue];
 		telemetry_detect_breach_peer_mov_avg(peer_ctx, msduq->svc_id,
-						     tid, queue,
-						     delay->mov_avg);
+						     queue, delay->mov_avg);
 	}
 
 	return 0;
 }
 
-int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
+int telemetry_sawf_update_msdu_drop(void *telemetry_ctx,
+				    uint8_t tid,
 				    uint8_t queue, uint64_t total,
 				    uint64_t fail_drop, uint64_t fail_ttl)
 {
@@ -884,20 +869,17 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx, uint8_t tid,
 	struct telemetry_sawf_drops *msdu_drop;
 	uint64_t curr_total, curr_fail, curr_fail_ttl;
 	struct sawf_msduq *msduq;
-	uint8_t msduq_id;
 
-
-	stats = &peer_ctx->stats[tid][queue];
+	stats = &peer_ctx->stats[queue];
 	msdu_drop = &stats->tx.msdu_drop;
 
 	curr_total = total - msdu_drop->last_xmit_cnt_packets;
 	curr_fail = fail_drop - msdu_drop->last_drop_cnt_packets;
 	curr_fail_ttl = fail_ttl - msdu_drop->last_ttl_drop_cnt_packets;
 
-	msduq_id = peer_ctx->peer_msduq.msduq_map[tid][queue];
-	msduq = &peer_ctx->peer_msduq.msduq[msduq_id];
+	msduq = &peer_ctx->peer_msduq.msduq[queue];
 	telemetry_detect_breach_peer_drop_num_pkt(peer_ctx, msduq->svc_id,
-						  tid, queue,
+						  queue,
 						  curr_total, curr_fail,
 						  curr_fail_ttl);
 	return 0;
@@ -909,7 +891,7 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
 
-	stats = &peer_ctx->stats[tid][queue];
+	stats = &peer_ctx->stats[queue];
 
 	*rate = stats->tx.throughput.eg_rate;
 
@@ -922,7 +904,7 @@ int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
 
-	stats = &peer_ctx->stats[tid][queue];
+	stats = &peer_ctx->stats[queue];
 
 	*mov_avg = stats->delay.mov_avg;
 

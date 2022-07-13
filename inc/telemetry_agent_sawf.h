@@ -300,7 +300,7 @@ struct peer_sawf_queue {
  */
 struct telemetry_sawf_peer_ctx {
 	struct list_head node;
-	struct telemetry_sawf_stats stats[SAWF_MAX_TID][SAWF_MAXQ_PTID];
+	struct telemetry_sawf_stats stats[SAWF_MAX_QUEUES];
 	uint64_t *mov_window;
 	void *dp_peer;
 	void *sawf_ctx;
