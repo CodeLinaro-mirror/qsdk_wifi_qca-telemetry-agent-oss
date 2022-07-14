@@ -331,6 +331,10 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx, uint8_t host_q_id,
 	struct telemetry_sawf_peer_ctx *peer_ctx;
 	struct peer_sawf_queue *peer_msduq;
 
+	if (!telemetry_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	peer_ctx = telemetry_ctx;
 	peer_msduq = &(peer_ctx->peer_msduq);
 
@@ -351,6 +355,10 @@ void telemetry_sawf_free_peer(void *telemetry_ctx)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return;
+	}
 	spin_lock_bh(&g_telemetry_sawf->peer_list_lock);
 	list_del(&(peer_ctx->node));
 
@@ -778,14 +786,19 @@ static int telemetry_detect_breach(enum telemetry_sawf_sla_detect_type type)
 	return 0;
 }
 
-int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid, uint8_t queue,
-				uint64_t pass, uint64_t fail)
+int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid,
+				     uint8_t queue, uint64_t pass,
+				     uint64_t fail)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	uint64_t curr_success, curr_failure;
 	struct telemetry_sawf_stats *stats;
 	struct sawf_msduq *msduq;
 
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	stats = &peer_ctx->stats[queue];
 
 	curr_success = pass - stats->delay.last_success;
@@ -831,6 +844,10 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 	uint32_t curr_win;
 	struct sawf_msduq *msduq;
 
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	stats = &peer_ctx->stats[queue];
 	delay = &stats->delay;
 	max_win = g_telemetry_sawf->mov_avg.window;
@@ -870,6 +887,10 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx,
 	uint64_t curr_total, curr_fail, curr_fail_ttl;
 	struct sawf_msduq *msduq;
 
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	stats = &peer_ctx->stats[queue];
 	msdu_drop = &stats->tx.msdu_drop;
 
@@ -890,7 +911,10 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
-
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	stats = &peer_ctx->stats[queue];
 
 	*rate = stats->tx.throughput.eg_rate;
@@ -903,7 +927,10 @@ int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
-
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
 	stats = &peer_ctx->stats[queue];
 
 	*mov_avg = stats->delay.mov_avg;
