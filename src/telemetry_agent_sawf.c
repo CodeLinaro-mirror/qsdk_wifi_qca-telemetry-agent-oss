@@ -907,7 +907,7 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx,
 }
 
 int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
-			    uint32_t *rate)
+			    uint32_t *egress_rate, uint32_t *ingress_rate)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
@@ -917,7 +917,8 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	}
 	stats = &peer_ctx->stats[queue];
 
-	*rate = stats->tx.throughput.eg_rate;
+	*egress_rate = stats->tx.throughput.eg_rate;
+	*ingress_rate = stats->tx.throughput.in_rate;
 
 	return 0;
 }

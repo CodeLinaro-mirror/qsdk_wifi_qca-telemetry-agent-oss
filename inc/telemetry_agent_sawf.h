@@ -528,16 +528,17 @@ uint64_t *telemtry_sawf_delay_window_alloc(void);
 int telemtry_sawf_delay_window_free(uint64_t *mov_window);
 
 /**
- * telemetry_sawf_get_rate - Get moving window rate stats
+ * telemetry_sawf_get_rate - Get rate stats
  * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
  * @tid: tid no
  * @queue: queue no
- * @mov_avg: pointer to rate
+ * @egress_rate: pointer to egress rate
+ * @inress_rate: pointer to inress rate
  *
  * Return: 0 on success
  */
-int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid,
-			    uint8_t queue, uint32_t *rate);
+int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
+			    uint32_t *egress_rate, uint32_t *ingress_rate);
 
 /**
  * telemetry_detect_get_mov_avg - Get moving window average stats

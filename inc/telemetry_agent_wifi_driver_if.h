@@ -103,7 +103,8 @@ struct telemetry_agent_ops {
                                  uint8_t queue, uint64_t pass,
                                  uint64_t fail_drop, uint64_t fail_ttl);
     int (* sawf_pull_rate) (void *telemetry_sawf_ctx, uint8_t tid,
-                            uint8_t queue, uint32_t *rate);
+                            uint8_t queue, uint32_t *egress_rate,
+                            uint32_t *ingress_rate);
     int (* sawf_pull_mov_avg) (void *telemetry_sawf_ctx, uint8_t tid,
                                uint8_t queue, uint32_t *mov_avg);
 };
