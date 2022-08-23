@@ -791,6 +791,9 @@ int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid, uint8_t q
 	curr_success = pass - stats->delay.last_success;
 	curr_failure = fail - stats->delay.last_failure;
 
+	stats->delay.last_success = pass;
+	stats->delay.last_failure = fail;
+
 	msduq = &peer_ctx->peer_msduq.msduq[queue];
 	telemetry_detect_breach_peer_delay_num_pkt(peer_ctx, msduq->svc_id,
 						   curr_success, curr_failure,
