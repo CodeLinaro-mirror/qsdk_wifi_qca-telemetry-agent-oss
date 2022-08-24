@@ -266,6 +266,10 @@ uint64_t *telemtry_sawf_delay_window_alloc(void)
 	uint32_t window_size;
 
 	mov_avg_param = telemetry_sawf_get_mov_avg_param();
+	if (!mov_avg_param) {
+		pr_sawf_err("Moving average param is null");
+		return NULL;
+	}
 	window_size = mov_avg_param->window * sizeof(uint64_t) * SAWF_MAX_QUEUES;
 
 	mov_window_ptr = kzalloc(window_size, GFP_ATOMIC);
@@ -421,6 +425,10 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t threshold, pass_p;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF ctx is null");
+		return -1;
+	}
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_NUM_PACKET];
@@ -455,6 +463,10 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t threshold, pass_p, num_drops;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF ctx is null");
+		return -1;
+	}
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_NUM_PACKET];
@@ -502,6 +514,10 @@ telemetry_detect_breach_peer_mov_avg(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t max_delay;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF ctx is null");
+		return -1;
+	}
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_MOV_AVG];
@@ -540,6 +556,10 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t threshold;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF ctx is null");
+		return -1;
+	}
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_PER_SECOND];
@@ -614,6 +634,10 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t pass_p, num_drops;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF ctx is null");
+		return -1;
+	}
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_NUM_SECOND];
@@ -952,6 +976,10 @@ int telemetry_sawf_init_sla_timer(void)
 	}
 
 	sla_param = telemetry_sawf_get_sla_param();
+	if (!sla_param) {
+		pr_sawf_err("SAWF param is null");
+		return -1;
+	}
 
 	timer_setup(&sawf_ctx->per_sec_timer,
 		    telemetry_detect_sla_per_sec, 0);
