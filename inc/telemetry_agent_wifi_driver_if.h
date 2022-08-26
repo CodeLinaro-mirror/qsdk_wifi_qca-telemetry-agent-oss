@@ -98,7 +98,8 @@ struct telemetry_agent_ops {
                              uint8_t queue, uint64_t pass,
                              uint64_t fail);
     int (* sawf_push_delay_mvng) (void *telemetry_ctx, uint8_t tid,
-                                  uint8_t queue, uint64_t window_delay);
+                                  uint8_t queue, uint64_t nwdelay_avg,
+				  uint64_t swdelay_avg, uint64_t hwdelay_avg);
     int (* sawf_push_msdu_drop) (void * telemetry_sawf_ctx, uint8_t tid,
                                  uint8_t queue, uint64_t pass,
                                  uint64_t fail_drop, uint64_t fail_ttl);
@@ -106,7 +107,8 @@ struct telemetry_agent_ops {
                             uint8_t queue, uint32_t *egress_rate,
                             uint32_t *ingress_rate);
     int (* sawf_pull_mov_avg) (void *telemetry_sawf_ctx, uint8_t tid,
-                               uint8_t queue, uint32_t *mov_avg);
+                               uint8_t queue, uint32_t *nwdelay_avg,
+			       uint32_t *swdelay_avg, uint32_t *hwdelay_avg);
 };
 
 struct t2lm_of_tids {
