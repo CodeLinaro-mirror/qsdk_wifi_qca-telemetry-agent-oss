@@ -31,7 +31,7 @@
 agent and APP */
 #define AGENT_MAX_BUFFER_SIZE (85*1024)
 #define MAX_SUB_BUFFERS 10
-#define STATS_FREQUECY  5000 /*in milli seconds */
+#define STATS_FREQUECY  1000 /*in milli seconds */
 #define WLAN_TELEMETRY_STATS_SUPPORT 1
 
 #define MAX_PDEV_LINKS_DB 3
