@@ -155,7 +155,7 @@ struct agent_peer_iface_stats_obj {
     uint8_t peer_mld_mac[6];
     uint8_t peer_link_mac[6];
     uint8_t link_id;
-    uint8_t airtime_consumption;
+    uint8_t airtime_consumption[WLAN_AC_MAX];
     uint32_t tx_mpdu_retried;
     uint32_t tx_mpdu_total;
     uint32_t rx_mpdu_retried;
@@ -166,10 +166,12 @@ struct agent_peer_iface_stats_obj {
 struct agent_link_iface_stats_obj {
     uint8_t link_id;
     uint8_t soc_id;
-    uint8_t available_airtime;
+    uint8_t available_airtime[WLAN_AC_MAX];
     uint32_t congestion;
     uint32_t tx_mpdu_failed;
     uint32_t tx_mpdu_total;
+    uint8_t link_airtime[WLAN_AC_MAX];
+    uint8_t freetime;
 };
 
 void wlan_cfg80211_t2lm_app_reply_init_response(void);
