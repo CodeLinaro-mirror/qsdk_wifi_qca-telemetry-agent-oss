@@ -182,6 +182,7 @@ int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats
 int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
 int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
 
+#ifdef CONFIG_SAWF
 int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
                              uint64_t *in_cnt, uint64_t *tx_bytes,
                              uint64_t *tx_cnt, uint8_t tid,
@@ -194,4 +195,30 @@ int wlan_sawf_get_mpdu_stats(void *soc, void *arg,
 int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
                              uint64_t *drop, uint64_t *drop_ttl,
                              uint8_t tid, uint8_t msduq);
+#else
+static inline
+int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
+			     uint64_t *in_cnt, uint64_t *tx_bytes,
+			     uint64_t *tx_cnt, uint8_t tid, uint8_t msduq)
+{
+	return 0;
+}
+
+static inline
+int wlan_sawf_get_mpdu_stats(void *soc, void *arg, uint64_t *svc_int_pass,
+			     uint64_t *svc_int_fail,
+			     uint64_t *burst_pass, uint64_t *burst_fail,
+			     uint8_t tid, uint8_t msduq)
+{
+	return 0;
+}
+
+static inline
+int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
+			     uint64_t *drop, uint64_t *drop_ttl,
+			     uint8_t tid, uint8_t msduq)
+{
+	return 0;
+}
+#endif
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */
