@@ -197,6 +197,9 @@ int wlan_sawf_get_mpdu_stats(void *soc, void *arg,
 int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
                              uint64_t *drop, uint64_t *drop_ttl,
                              uint8_t tid, uint8_t msduq);
+void wlan_sawf_notify_breach(uint8_t *mac_addr,
+			     uint8_t svc_id,
+			     uint8_t param, bool set_clear);
 #else
 static inline
 int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
@@ -221,6 +224,13 @@ int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
 			     uint8_t tid, uint8_t msduq)
 {
 	return 0;
+}
+
+static inline
+void wlan_sawf_notify_breach(uint8_t *mac_addr,
+			     uint8_t svc_id,
+			     uint8_t param, bool set_clear)
+{
 }
 #endif
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */

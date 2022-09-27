@@ -96,6 +96,28 @@ struct telemetry_sawf_sla_param {
 };
 
 /**
+ * telemetry_sawf_param - Enum indicating SAWF pram type
+ * @SAWF_PARAM_MIN_THROUGHPUT: minimum throughput
+ * @SAWF_PARAM_MAX_THROUGHPUT: maximum throughput
+ * @SAWF_PARAM_BURST_SIZE: burst-size num-pkts
+ * @SAWF_PARAM_SERVICE_INTERVAL: service-interval
+ * @SAWF_PARAM_DELAY_BOUND: delay-bound
+ * @SAWF_PARAM_MSDU_TTL: TTL for msdu-drop
+ * @SAWF_PARAM_MSDU_LOSS:  msdu-loss rate
+ */
+enum telemetry_sawf_param {
+	SAWF_PARAM_INVALID,
+	SAWF_PARAM_MIN_THROUGHPUT,
+	SAWF_PARAM_MAX_THROUGHPUT,
+	SAWF_PARAM_BURST_SIZE,
+	SAWF_PARAM_SERVICE_INTERVAL,
+	SAWF_PARAM_DELAY_BOUND,
+	SAWF_PARAM_MSDU_TTL,
+	SAWF_PARAM_MSDU_LOSS,
+	SAWF_PARAM_MAX,
+};
+
+/**
  * telemetry_sawf_svc_class_param - telemetry sawf sla params
  * @min_thruput_rate: minimum throughput
  * @max_thruput_rate: maximum throughput
@@ -114,7 +136,6 @@ struct telemetry_sawf_svc_class_param {
 	uint8_t msdu_ttl;
 	uint8_t msdu_rate_loss;
 };
-
 
 /**
  * telemetry_sawf_sla - telemetry sawf sla-config
@@ -270,6 +291,7 @@ struct telemetry_sawf_delay {
 struct telemetry_sawf_stats {
 	struct telemetry_sawf_tx tx;
 	struct telemetry_sawf_delay delay;
+	bool breach[SAWF_PARAM_MAX];
 };
 
 /**
@@ -311,7 +333,6 @@ struct telemetry_sawf_peer_ctx {
 	struct list_head node;
 	struct telemetry_sawf_stats stats[SAWF_MAX_QUEUES];
 	uint64_t *mov_window;
-	void *dp_peer;
 	void *sawf_ctx;
 	void *soc;
 	uint8_t mac_addr[MAC_ADDR_SIZE];

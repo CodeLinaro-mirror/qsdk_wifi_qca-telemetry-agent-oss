@@ -418,6 +418,26 @@ telemetry_get_mpdu_stats_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	return 0;
 }
 
+static int telemetry_notify_breach(struct telemetry_sawf_peer_ctx *peer,
+				   uint8_t svc_id,
+				   uint8_t queue,
+				   bool set_clear,
+				   enum telemetry_sawf_param param)
+{
+	struct telemetry_sawf_stats *stats;
+
+	stats = &peer->stats[queue];
+
+	if (stats->breach[param] == set_clear)
+		return 0;
+
+	wlan_sawf_notify_breach(peer->mac_addr, svc_id, param, set_clear);
+
+	stats->breach[param] = set_clear;
+
+	return 0;
+}
+
 static int
 telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 				     uint8_t svc_id, uint8_t queue,
@@ -450,7 +470,13 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Delay Success: %lld", pass);
 			pr_sawf_err("Delay Failure: %lld", fail);
 			pr_sawf_err("Pass Percentage: %d", pass_p);
+			telemetry_notify_breach(peer, svc_id, queue,
+						true, SAWF_PARAM_DELAY_BOUND);
+		} else {
+			telemetry_notify_breach(peer, svc_id, queue,
+						false, SAWF_PARAM_DELAY_BOUND);
 		}
+
 	}
 
 	return 0;
@@ -487,6 +513,13 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("MSDU TTL Drop Success: %lld", total);
 			pr_sawf_err("MSDU TTL Drop Failure: %lld", drop_ttl);
 			pr_sawf_err("Pass Percentage: %d", pass_p);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_MSDU_TTL);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_MSDU_TTL);
 		}
 	}
 
@@ -501,6 +534,13 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
 			pr_sawf_err("MSDU Drop Max Count: %d", num_drops);
 			pr_sawf_err("MSDU Drop Count: %lld", drop);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_MSDU_LOSS);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_MSDU_LOSS);
 		}
 	}
 	return 0;
@@ -539,6 +579,13 @@ telemetry_detect_breach_peer_mov_avg(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Delay Moving Average: %lld", mov_avg_delay);
 			pr_sawf_err("Configured Delay Bound thresd: %d", threshold);
 			pr_sawf_err("Max Delay Bound threshold:%d", max_delay);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_DELAY_BOUND);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_DELAY_BOUND);
 		}
 	}
 
@@ -598,6 +645,9 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Configured Min Throughput: %d", throughput);
 			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+					        SAWF_PARAM_MIN_THROUGHPUT);
 		}
 	}
 	threshold = sla_param->max_thruput_rate;
@@ -610,6 +660,13 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Configured Max Throughput: %d", throughput);
 			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+					        SAWF_PARAM_MAX_THROUGHPUT);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+					        SAWF_PARAM_MAX_THROUGHPUT);
 		}
 	}
 
@@ -697,6 +754,13 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Burst Size success: %lld", curr_burst_pass);
 			pr_sawf_err("Burst Size Failure: %lld", curr_burst_fail);
 			pr_sawf_err("Pass Percentage: %d", pass_p);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+					        SAWF_PARAM_BURST_SIZE);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+					        SAWF_PARAM_BURST_SIZE);
 		}
 	}
 
@@ -711,6 +775,13 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("Service Interval success: %lld", curr_svc_int_pass);
 			pr_sawf_err("Service Interval Failure: %lld", curr_svc_int_fail);
 			pr_sawf_err("Pass Percentage: %d", pass_p);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+					        SAWF_PARAM_SERVICE_INTERVAL);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+					        SAWF_PARAM_SERVICE_INTERVAL);
 		}
 	}
 
@@ -724,6 +795,13 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("MSDU TTL Drop Success: %lld", curr_total);
 			pr_sawf_err("MSDU TTL Drop Failure: %lld", curr_drop_ttl);
 			pr_sawf_err("Pass Percentage: %d", pass_p);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+					        SAWF_PARAM_MSDU_TTL);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+					        SAWF_PARAM_MSDU_TTL);
 		}
 	}
 
@@ -736,7 +814,15 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("MSDU Drop Threshold: %d", threshold);
 			pr_sawf_err("MSDU Drop Max Count: %d", num_drops);
 			pr_sawf_err("MSDU Drop Count: %lld", curr_drop);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_MSDU_LOSS);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_MSDU_LOSS);
 		}
+
 	}
 	return 0;
 }
@@ -911,19 +997,11 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 					   swdelay_avg;
 		delay->hwdelay_win_total = delay->hwdelay_win_total +
 					   hwdelay_avg;
-		/*pr_sawf_dbg("DELAY: Total delay for window(%lld) is: sw: %lld hw: %lld",
-			    delay->cur_window, delay->swdelay_win_total,
-			    delay->hwdelay_win_total);
-		 */
 		delay->cur_window++;
 	} else if (delay->cur_window == max_win) {
 		delay->nwdelay_avg = div_u64(delay->nwdelay_win_total, max_win);
 		delay->swdelay_avg = div_u64(delay->swdelay_win_total, max_win);
 		delay->hwdelay_avg = div_u64(delay->hwdelay_win_total, max_win);
-		//pr_sawf_dbg("Delay: Max window: %d", max_win);
-		/*pr_sawf_dbg("DELAY: Total delay for max window%u is: sw: %llu hw: %llu",
-			    max_win, delay->swdelay_win_total, delay->hwdelay_win_total);
-		 */
 		//Detect moving average SLA
 		delay->cur_window = 0;
 		delay->nwdelay_win_total = 0;
