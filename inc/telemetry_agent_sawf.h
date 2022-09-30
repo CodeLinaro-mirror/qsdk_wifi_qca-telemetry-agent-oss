@@ -25,6 +25,7 @@
 #define SAWF_MAX_TID 8
 #define SAWF_MAXQ_PTID 2
 #define SAWF_MAX_QUEUES (SAWF_MAX_TID * SAWF_MAXQ_PTID)
+#define SAWF_MAX_LATENCY_TYPE 3
 
 #define MSEC_TO_JIFFIES(x) jiffies + msecs_to_jiffies(x)
 
@@ -242,15 +243,23 @@ struct telemetry_sawf_tx {
  * @last_success: last-success count
  * @last_success: last-failure count
  * @cur_window: current window no
- * @mov_avg: average of all windows
- * @windows_total: sum of stats for all windows
+ * @nwdelay_avg: moving average of nwdelay for all windows
+ * @swdelay_avg: moving average of swdelay for all windows
+ * @hwdelay_avg: moving average of hwdelay for all windows
+ * @nwdelay_win_total: sum of nwdelay stats for all windows
+ * @swdelay_win_total: sum of swdelay stats for all windows
+ * @hwdelay_win_total: sum of hwdelay stats for all windows
  */
 struct telemetry_sawf_delay {
 	uint64_t last_success;
 	uint64_t last_failure;
 	uint64_t cur_window;
-	uint64_t mov_avg;
-	uint64_t windows_total;
+	uint32_t nwdelay_avg;
+	uint32_t swdelay_avg;
+	uint32_t hwdelay_avg;
+	uint64_t nwdelay_win_total;
+	uint64_t swdelay_win_total;
+	uint64_t hwdelay_win_total;
 };
 
 /**
@@ -472,13 +481,17 @@ int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid,
  * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
  * @tid: tid no
  * @queue: queue no
- * @window_delay: window delay stats
+ * @nwdelay_avg: moving window average for n/w delay
+ * @swdelay_avg: moving window average for s/w delay
+ * @hwdelay_avg: moving window average for h/w delay
  *
  * Return: 0 on success
  */
 int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
-					uint8_t tid, uint8_t queue,
-					uint64_t window_delay);
+					     uint8_t tid, uint8_t queue,
+					     uint64_t nwdelay_avg,
+					     uint64_t swdelay_avg,
+					     uint64_t hwdelay_avg);
 
 /**
  * telemetry_sawf_update_msdu_drop - Update msdu-drop stats
@@ -541,16 +554,19 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 			    uint32_t *egress_rate, uint32_t *ingress_rate);
 
 /**
- * telemetry_detect_get_mov_avg - Get moving window average stats
+ * telemetry_sawf_pull_mov_avg - Get moving window average stats
  * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
  * @tid: tid no
  * @queue: queue no
- * @mov_avg: pointer to moving-avg data
+ * @nwdelay_avg: pointer to nwdelay moving-avg data
+ * @swdelay_avg: pointer to swdelay moving-avg data
+ * @hwdelay_avg: pointer to hwdelay moving-avg data
  *
  * Return: 0 on success
  */
-int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid,
-			       uint8_t queue, uint32_t *mov_avg);
+int telemetry_sawf_pull_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
+				uint32_t *nwdelay_avg, uint32_t *swdelay_avg,
+				uint32_t *hwdelay_avg);
 
 /**
  * telemetry_sawf_init_per_sec_sla_timer - Initialize per-sec timer to

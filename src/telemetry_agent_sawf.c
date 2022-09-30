@@ -270,7 +270,13 @@ uint64_t *telemtry_sawf_delay_window_alloc(void)
 		pr_sawf_err("Moving average param is null");
 		return NULL;
 	}
-	window_size = mov_avg_param->window * sizeof(uint64_t) * SAWF_MAX_QUEUES;
+
+	/*
+	 * The moving_window stats is maintained for all windows
+	 * per queue for the 3 different delay-types.
+	 */
+	window_size = mov_avg_param->window * sizeof(uint64_t) *
+		      SAWF_MAX_QUEUES * SAWF_MAX_LATENCY_TYPE;
 
 	mov_window_ptr = kzalloc(window_size, GFP_ATOMIC);
 	if (mov_window_ptr)
@@ -840,33 +846,45 @@ int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid,
 }
 
 static inline
-uint64_t *telemetry_get_mov_window_offset(void *telemetry_ctx,
-					  uint8_t queue,
-					  uint32_t curr_win)
+void telemetry_get_mov_window_offset(void *telemetry_ctx, uint8_t queue,
+				     uint32_t curr_win, uint64_t **nw_delay,
+				     uint64_t **sw_delay, uint64_t **hw_delay)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx;
 	uint32_t max_win;
 	uint64_t *mov_win_start;
 	uint64_t *queue_offset;
-	uint64_t *q_win_offest;
 
 	peer_ctx = telemetry_ctx;
 	max_win = g_telemetry_sawf->mov_avg.window;
 	mov_win_start = peer_ctx->mov_window;
-	queue_offset = mov_win_start  + (queue * sizeof(uint64_t) * max_win);
-	q_win_offest = queue_offset + (curr_win * sizeof(uint64_t));
 
-	return q_win_offest;
+	/*
+	 * Stats for all windows for each delay-type is stored sequentially
+	 * per queue.First reach the start of stats for each delay-type and
+	 * then find the slot for the corresponding window.
+	 */
+	queue_offset = mov_win_start + (queue * max_win);
+	*nw_delay = queue_offset + curr_win;
+
+	queue_offset = mov_win_start + (SAWF_MAX_QUEUES * max_win);
+	*sw_delay = queue_offset + curr_win;
+
+	queue_offset = mov_win_start + ((SAWF_MAX_LATENCY_TYPE - 1) *
+					SAWF_MAX_QUEUES * max_win);
+	*hw_delay = queue_offset + curr_win;
 }
 
 int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 					     uint8_t tid, uint8_t queue,
-					     uint64_t window_delay)
+					     uint64_t nwdelay_avg,
+					     uint64_t swdelay_avg,
+					     uint64_t hwdelay_avg)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
 	uint32_t max_win;
-	uint64_t *q_window;
+	uint64_t *nwdelay_qwin, *swdelay_qwin, *hwdelay_qwin;
 	struct telemetry_sawf_delay *delay;
 	uint32_t curr_win;
 	struct sawf_msduq *msduq;
@@ -881,23 +899,39 @@ int telemetry_sawf_update_peer_delay_mov_avg(void *telemetry_ctx,
 
 	if (delay->cur_window < max_win) {
 		curr_win = delay->cur_window;
-		q_window = telemetry_get_mov_window_offset(telemetry_ctx,
-							   queue,
-							   curr_win);
-		*q_window = window_delay;
-		delay->windows_total = delay->windows_total + window_delay;
-		//pr_sawf_dbg("DELAY: Total delay for window(%lld) is %lld", delay->cur_window, delay->windows_total);
+		telemetry_get_mov_window_offset(telemetry_ctx, queue, curr_win,
+						&nwdelay_qwin, &swdelay_qwin,
+						&hwdelay_qwin);
+		*nwdelay_qwin = nwdelay_avg;
+		*swdelay_qwin = swdelay_avg;
+		*hwdelay_qwin = hwdelay_avg;
+		delay->nwdelay_win_total = delay->nwdelay_win_total +
+					   nwdelay_avg;
+		delay->swdelay_win_total = delay->swdelay_win_total +
+					   swdelay_avg;
+		delay->hwdelay_win_total = delay->hwdelay_win_total +
+					   hwdelay_avg;
+		/*pr_sawf_dbg("DELAY: Total delay for window(%lld) is: sw: %lld hw: %lld",
+			    delay->cur_window, delay->swdelay_win_total,
+			    delay->hwdelay_win_total);
+		 */
 		delay->cur_window++;
 	} else if (delay->cur_window == max_win) {
-		delay->mov_avg = div_u64(delay->windows_total, max_win);
+		delay->nwdelay_avg = div_u64(delay->nwdelay_win_total, max_win);
+		delay->swdelay_avg = div_u64(delay->swdelay_win_total, max_win);
+		delay->hwdelay_avg = div_u64(delay->hwdelay_win_total, max_win);
 		//pr_sawf_dbg("Delay: Max window: %d", max_win);
-		//pr_sawf_dbg("Delay: Average delay for window(%lld) is %lld", delay->windows_total, delay->mov_avg);
+		/*pr_sawf_dbg("DELAY: Total delay for max window%u is: sw: %llu hw: %llu",
+			    max_win, delay->swdelay_win_total, delay->hwdelay_win_total);
+		 */
 		//Detect moving average SLA
 		delay->cur_window = 0;
-		delay->windows_total = 0;
+		delay->nwdelay_win_total = 0;
+		delay->swdelay_win_total = 0;
+		delay->hwdelay_win_total = 0;
 		msduq = &peer_ctx->peer_msduq.msduq[queue];
 		telemetry_detect_breach_peer_mov_avg(peer_ctx, msduq->svc_id,
-						     queue, delay->mov_avg);
+						     queue, delay->hwdelay_avg);
 	}
 
 	return 0;
@@ -950,8 +984,9 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	return 0;
 }
 
-int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
-			       uint32_t *mov_avg)
+int telemetry_sawf_pull_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
+				uint32_t *nwdelay_avg, uint32_t *swdelay_avg,
+				uint32_t *hwdelay_avg)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
@@ -961,9 +996,13 @@ int telemetry_sawf_get_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	}
 	stats = &peer_ctx->stats[queue];
 
-	*mov_avg = stats->delay.mov_avg;
+	*nwdelay_avg = stats->delay.nwdelay_avg;
+	*swdelay_avg = stats->delay.swdelay_avg;
+	*hwdelay_avg = stats->delay.hwdelay_avg;
 
-	pr_sawf_dbg("Moving Average: %d", *mov_avg);
+	pr_sawf_dbg("nwdelay Mvng Avg: %d", *nwdelay_avg);
+	pr_sawf_dbg("swdelay Mvng Avg: %u", *swdelay_avg);
+	pr_sawf_dbg("hwdelay Mvng Avg: %u", *hwdelay_avg);
 	return 0;
 }
 
