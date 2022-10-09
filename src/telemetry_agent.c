@@ -370,6 +370,12 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	int pdev_idx; 
 
 	psoc_db  = &g_agent_obj.agent_db.psoc_db[pdev_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: pdev DB create fail as psoc DB not created for soc_id %d\n",
+				__func__, pdev_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_idx = psoc_db->num_pdevs;
 	pdev_db  = &psoc_db->pdev_db[pdev_idx];
 
@@ -413,7 +419,19 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	struct agent_peer_db *peer_db = NULL;
 
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: peer DB create fail as psoc DB not created for soc_id %d\n",
+				__func__, peer_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
+	if (!pdev_db->pdev_obj_ptr) {
+		ta_print_error("%s: peer DB creation failed as pdev DB not creted for pdev_id: %d\n",
+				__func__,peer_obj->pdev_id);
+		return STATUS_FAIL;
+	}
+
 
 	peer_db = kzalloc(sizeof(struct agent_peer_db), GFP_ATOMIC);
 	if (!peer_db) {
@@ -474,7 +492,19 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 	struct agent_peer_db *peer_db_remove = NULL;
 
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: peer DB destroy failed as psoc DB not created for soc_id: %d\n",
+				__func__, peer_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
+	if (!pdev_db->pdev_obj_ptr) {
+		ta_print_error("%s: peer DB destroy failed as pdev DB not pdev_id: %d\n",
+				__func__, peer_obj->pdev_id);
+		return STATUS_FAIL;
+	}
+
 	spin_lock_bh(&pdev_db->peer_db_lock);
 		list_for_each(node, &pdev_db->peer_db_list) {
 			peer_db = list_entry(node, struct agent_peer_db, node);
