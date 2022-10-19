@@ -37,7 +37,7 @@ static char *print_mac_addr(const uint8_t *mac)
 
 void telemetry_agent_stats_work_periodic(struct work_struct *work) 
 {
-	int i, j;
+	int i, j, ac;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
 	struct agent_peer_db *peer_db = NULL;
@@ -87,16 +87,18 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			       pdev_stats.link_airtime,
 			       sizeof(rfs_link_stats->link_airtime));
 			rfs_link_stats->freetime = pdev_stats.freetime;
-			rfs_link_stats->m3_stats = (pdev_stats.congestion * 100)/1000000;
-			if (!pdev_stats.tx_mpdu_total)
-				rfs_link_stats->m4_stats = 0;
-			else
-				rfs_link_stats->m4_stats = ((pdev_stats.tx_mpdu_failed - pdev_db->tx_mpdu_failed) * 100)/
-							    (pdev_stats.tx_mpdu_total - pdev_db->tx_mpdu_total);
+			memcpy(rfs_link_stats->m3_stats, pdev_stats.congestion,
+			       sizeof(rfs_link_stats->m3_stats));
+			for (ac = 0; ac < WLAN_AC_MAX; ac++) {
+				if (!pdev_stats.tx_mpdu_total[ac])
+					rfs_link_stats->m4_stats[ac] = 0;
+				else
+					rfs_link_stats->m4_stats[ac] = ((pdev_stats.tx_mpdu_failed[ac] - pdev_db->tx_mpdu_failed[ac]) * 100)/
+									(pdev_stats.tx_mpdu_total[ac] - pdev_db->tx_mpdu_total[ac]);
+				pdev_db->tx_mpdu_failed[ac] = pdev_stats.tx_mpdu_failed[ac];
+				pdev_db->tx_mpdu_total[ac] = pdev_stats.tx_mpdu_total[ac];
+			}
 #endif
-			pdev_db->tx_mpdu_failed = pdev_stats.tx_mpdu_failed;
-			pdev_db->tx_mpdu_total = pdev_stats.tx_mpdu_total;
-
 			num_peers = pdev_db->num_peers;
 			num_mlo_peers = 0;
 

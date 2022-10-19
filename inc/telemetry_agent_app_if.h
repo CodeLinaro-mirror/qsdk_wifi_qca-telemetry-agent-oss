@@ -87,8 +87,8 @@ struct agent_link_stats {
 	uint8_t link_airtime[WLAN_AC_MAX];
 	uint8_t freetime;
 	uint8_t available_airtime[WLAN_AC_MAX];
-	uint32_t m3_stats;
-	uint32_t m4_stats;
+	uint32_t m3_stats[WLAN_AC_MAX];
+	uint32_t m4_stats[WLAN_AC_MAX];
 	uint16_t num_peers;
 	struct agent_peer_stats peer_stats[MAX_PEERS];
 };
