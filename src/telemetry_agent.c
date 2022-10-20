@@ -218,14 +218,14 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 							peer_stats.peer_link_mac, 6);
                     /* T2LM Info */
 					for(idx = 0; idx < MAX_T2LM_INFO; idx++) {
-						rfs_peer_stats->t2lm_info[i].direction =
-							peer_stats.t2lm_info[i].direction;
-						rfs_peer_stats->t2lm_info[i].default_link_mapping =
-							peer_stats.t2lm_info[i].default_link_mapping;
+						rfs_peer_stats->t2lm_info[idx].direction =
+							peer_stats.t2lm_info[idx].direction;
+						rfs_peer_stats->t2lm_info[idx].default_link_mapping =
+							peer_stats.t2lm_info[idx].default_link_mapping;
 
 						for (tid = 0; tid < NUM_TIDS; tid++) {
 							rfs_peer_stats->t2lm_info[idx].tid_present[tid] =
-								peer_stats.t2lm_info[i].t2lm_provisioned_links[tid];
+								peer_stats.t2lm_info[idx].t2lm_provisioned_links[tid];
 						}
 					}
 
