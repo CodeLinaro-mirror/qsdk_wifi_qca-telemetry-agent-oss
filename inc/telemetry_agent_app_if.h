@@ -25,6 +25,7 @@
 #define RFS_STATS_DATA 2
 #define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
 #define MAX_T2LM_INFO 2
+#define WLAN_AC_MAX 4
 
 /*
    Buffer Format
@@ -75,7 +76,7 @@ enum wlan_vendor_t2lm_direction {
 struct agent_peer_stats {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
-	uint8_t airtime_consumption;
+	uint8_t airtime_consumption[WLAN_AC_MAX];
 	uint8_t m1_stats;
 	uint8_t m2_stats;
 	int8_t rssi;
@@ -83,7 +84,9 @@ struct agent_peer_stats {
 
 struct agent_link_stats {
 	uint8_t hw_link_id;
-	uint8_t available_airtime;
+	uint8_t link_airtime[WLAN_AC_MAX];
+	uint8_t freetime;
+	uint8_t available_airtime[WLAN_AC_MAX];
 	uint32_t m3_stats;
 	uint32_t m4_stats;
 	uint16_t num_peers;

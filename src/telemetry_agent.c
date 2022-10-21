@@ -80,7 +80,13 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
 			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
-			rfs_link_stats->available_airtime = pdev_stats.available_airtime;
+			memcpy(rfs_link_stats->available_airtime,
+			       pdev_stats.available_airtime,
+			       sizeof(rfs_link_stats->available_airtime));
+			memcpy(rfs_link_stats->link_airtime,
+			       pdev_stats.link_airtime,
+			       sizeof(rfs_link_stats->link_airtime));
+			rfs_link_stats->freetime = pdev_stats.freetime;
 			rfs_link_stats->m3_stats = (pdev_stats.congestion * 100)/1000000;
 			if (!pdev_stats.tx_mpdu_total)
 				rfs_link_stats->m4_stats = 0;
@@ -106,7 +112,9 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					       peer_stats.peer_mld_mac, 6);
 					memcpy(&rfs_peer_stats->peer_link_mac[0],
 				    	peer_stats.peer_link_mac, 6);
-					rfs_peer_stats->airtime_consumption = peer_stats.airtime_consumption;
+					memcpy(rfs_peer_stats->airtime_consumption,
+					       peer_stats.airtime_consumption,
+					       sizeof(rfs_peer_stats->airtime_consumption));
 #ifdef WLAN_TELEMETRY_STATS_SUPPORT
 					if (!peer_stats.tx_mpdu_total)
 						rfs_peer_stats->m1_stats = 0;
@@ -362,6 +370,12 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	int pdev_idx; 
 
 	psoc_db  = &g_agent_obj.agent_db.psoc_db[pdev_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: pdev DB create fail as psoc DB not created for soc_id %d\n",
+				__func__, pdev_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_idx = psoc_db->num_pdevs;
 	pdev_db  = &psoc_db->pdev_db[pdev_idx];
 
@@ -405,7 +419,19 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	struct agent_peer_db *peer_db = NULL;
 
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: peer DB create fail as psoc DB not created for soc_id %d\n",
+				__func__, peer_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
+	if (!pdev_db->pdev_obj_ptr) {
+		ta_print_error("%s: peer DB creation failed as pdev DB not creted for pdev_id: %d\n",
+				__func__,peer_obj->pdev_id);
+		return STATUS_FAIL;
+	}
+
 
 	peer_db = kzalloc(sizeof(struct agent_peer_db), GFP_ATOMIC);
 	if (!peer_db) {
@@ -466,7 +492,19 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 	struct agent_peer_db *peer_db_remove = NULL;
 
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("%s: peer DB destroy failed as psoc DB not created for soc_id: %d\n",
+				__func__, peer_obj->psoc_id);
+		return STATUS_FAIL;
+	}
+
 	pdev_db = &psoc_db->pdev_db[peer_obj->pdev_id];
+	if (!pdev_db->pdev_obj_ptr) {
+		ta_print_error("%s: peer DB destroy failed as pdev DB not pdev_id: %d\n",
+				__func__, peer_obj->pdev_id);
+		return STATUS_FAIL;
+	}
+
 	spin_lock_bh(&pdev_db->peer_db_lock);
 		list_for_each(node, &pdev_db->peer_db_list) {
 			peer_db = list_entry(node, struct agent_peer_db, node);
@@ -531,7 +569,7 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_push_delay_mvng: telemetry_sawf_update_peer_delay_mov_avg,
 	sawf_push_msdu_drop: telemetry_sawf_update_msdu_drop,
 	sawf_pull_rate: telemetry_sawf_get_rate,
-	sawf_pull_mov_avg: telemetry_sawf_get_mov_avg
+	sawf_pull_mov_avg: telemetry_sawf_pull_mov_avg
 };
 
 static int telemetry_agent_init_module(void)
