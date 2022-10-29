@@ -169,9 +169,9 @@ struct agent_link_iface_stats_obj {
     uint8_t link_id;
     uint8_t soc_id;
     uint8_t available_airtime[WLAN_AC_MAX];
-    uint32_t congestion;
-    uint32_t tx_mpdu_failed;
-    uint32_t tx_mpdu_total;
+    uint32_t congestion[WLAN_AC_MAX];
+    uint32_t tx_mpdu_failed[WLAN_AC_MAX];
+    uint32_t tx_mpdu_total[WLAN_AC_MAX];
     uint8_t link_airtime[WLAN_AC_MAX];
     uint8_t freetime;
 };
