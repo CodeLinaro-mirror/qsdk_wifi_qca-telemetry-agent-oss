@@ -425,13 +425,17 @@ static int telemetry_notify_breach(struct telemetry_sawf_peer_ctx *peer,
 				   enum telemetry_sawf_param param)
 {
 	struct telemetry_sawf_stats *stats;
+	struct sawf_msduq *msduq;
+	uint8_t tid;
 
 	stats = &peer->stats[queue];
 
 	if (stats->breach[param] == set_clear)
 		return 0;
 
-	wlan_sawf_notify_breach(peer->mac_addr, svc_id, param, set_clear);
+	msduq = &peer->peer_msduq.msduq[queue];
+	tid = msduq->tid;
+	wlan_sawf_notify_breach(peer->mac_addr, svc_id, param, set_clear, tid);
 
 	stats->breach[param] = set_clear;
 
