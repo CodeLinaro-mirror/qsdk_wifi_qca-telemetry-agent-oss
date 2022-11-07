@@ -78,8 +78,8 @@ struct agent_pdev_db {
 	void *pdev_obj_ptr;
 	void *psoc_obj_ptr;
 	uint8_t pdev_id;
-	uint32_t tx_mpdu_failed;
-	uint32_t tx_mpdu_total;
+	uint32_t tx_mpdu_failed[WLAN_AC_MAX];
+	uint32_t tx_mpdu_total[WLAN_AC_MAX];
 	int num_peers;
 	spinlock_t peer_db_lock;
 	struct list_head peer_db_list;
