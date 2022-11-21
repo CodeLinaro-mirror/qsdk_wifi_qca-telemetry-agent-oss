@@ -572,7 +572,8 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_push_delay_mvng: telemetry_sawf_update_peer_delay_mov_avg,
 	sawf_push_msdu_drop: telemetry_sawf_update_msdu_drop,
 	sawf_pull_rate: telemetry_sawf_get_rate,
-	sawf_pull_mov_avg: telemetry_sawf_pull_mov_avg
+	sawf_pull_mov_avg: telemetry_sawf_pull_mov_avg,
+	sawf_reset_peer_stats: telemetry_sawf_reset_peer_stats,
 };
 
 static int telemetry_agent_init_module(void)

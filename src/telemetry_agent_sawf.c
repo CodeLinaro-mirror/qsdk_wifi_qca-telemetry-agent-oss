@@ -460,8 +460,8 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 		pr_sawf_err("SAWF ctx is null");
 		return -1;
 	}
-	svc_param = &sawf_ctx->svc_class.svc_class[svc_id -1];
-	sla_param = &sawf_ctx->sla.sla_cfg[svc_id -1];
+	svc_param = &sawf_ctx->svc_class.svc_class[svc_id - 1];
+	sla_param = &sawf_ctx->sla.sla_cfg[svc_id - 1];
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_NUM_PACKET];
 
 	threshold = sla_param->delay_bound;
@@ -1089,6 +1089,34 @@ int telemetry_sawf_pull_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	pr_sawf_dbg("nwdelay Mvng Avg: %d", *nwdelay_avg);
 	pr_sawf_dbg("swdelay Mvng Avg: %u", *swdelay_avg);
 	pr_sawf_dbg("hwdelay Mvng Avg: %u", *hwdelay_avg);
+	return 0;
+}
+
+int telemetry_sawf_reset_peer_stats(uint8_t *mac_addr)
+{
+	struct telemetry_sawf_ctx *sawf_ctx;
+	struct list_head *node;
+	struct telemetry_sawf_peer_ctx *peer;
+
+	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF context is NULL");
+		return -1;
+	}
+
+	spin_lock_bh(&sawf_ctx->peer_list_lock);
+	list_for_each(node, &sawf_ctx->peer_list) {
+		peer = list_entry(node,
+				  struct telemetry_sawf_peer_ctx, node);
+		if (!peer) {
+			pr_sawf_err("Peer ctx is null");
+			continue;
+		}
+		if (0 == memcmp(mac_addr, peer->mac_addr, MAC_ADDR_SIZE))
+			memset(peer->stats, 0, sizeof(peer->stats));
+
+	}
+	spin_unlock_bh(&sawf_ctx->peer_list_lock);
 	return 0;
 }
 

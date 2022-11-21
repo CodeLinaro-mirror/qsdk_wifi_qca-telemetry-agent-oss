@@ -628,4 +628,11 @@ void telemetry_detect_sla_per_sec(struct timer_list *timer);
  */
 void telemetry_detect_sla_num_sec(struct timer_list *timer);
 
+/**
+ * telemetry_sawf_reset_peer_stats - Reset stats for a peer
+ * @mac_addr: pointer to peer mac address
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_reset_peer_stats(uint8_t *mac_addr);
 #endif /* TELEMETRY_AGENT_SAWF_H */
