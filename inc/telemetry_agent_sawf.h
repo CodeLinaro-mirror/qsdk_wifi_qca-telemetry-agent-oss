@@ -21,6 +21,7 @@
 #include <linux/timer.h>
 #include "../inc/telemetry_agent.h"
 
+#define SAWF_MIN_SVC_CLASS 1
 #define SAWF_MAX_SVC_CLASS 128
 #define SAWF_MAX_TID 8
 #define SAWF_MAXQ_PTID 2
