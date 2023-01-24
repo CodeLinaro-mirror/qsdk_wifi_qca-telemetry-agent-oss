@@ -54,6 +54,7 @@ enum wlan_vendor_channel_width {
 };
 
 enum t2lm_band_caps {
+	T2LM_BAND_INVALID,
 	T2LM_BAND_2GHz,
 	T2LM_BAND_5GHz,
 	T2LM_BAND_5GHz_LOW,
@@ -61,7 +62,6 @@ enum t2lm_band_caps {
 	T2LM_BAND_6Ghz,
 	T2LM_BAND_6Ghz_LOW,
 	T2LM_BAND_6GHz_HIGH,
-	T2LM_BAND_INVALID,
 };
 
 enum wlan_vendor_t2lm_direction {
