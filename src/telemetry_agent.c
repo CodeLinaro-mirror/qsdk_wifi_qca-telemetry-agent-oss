@@ -19,6 +19,7 @@
 
 struct telemetry_agent_object g_agent_obj; 
 struct telemetry_buffer stats_buffer;
+struct telemetry_emesh_buffer *emesh_stats_buffer;
 
 /**
  *   print_mac_addr: prints the mac address.
@@ -32,6 +33,78 @@ static char *print_mac_addr(const uint8_t *mac)
 	snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
 			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	return buf;
+}
+
+void telemetry_emesh_stats_work_periodic(struct work_struct *work)
+{
+	int i, j;
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_peer_db *peer_db = NULL;
+	int num_socs = 0;
+	int num_pdevs = 0;
+	int num_peers = 0;
+	struct emesh_link_iface_stats_obj pdev_stats = {0};
+	struct emesh_peer_iface_stats_obj peer_stats = {0};
+
+	struct emesh_soc_stats *rfs_soc_stats = NULL;
+	struct emesh_link_stats *rfs_link_stats = NULL;
+	struct emesh_peer_stats *rfs_peer_stats = NULL;
+	struct list_head *node;
+
+	memset(emesh_stats_buffer, 0, sizeof(struct telemetry_emesh_buffer));
+	emesh_stats_buffer->header.start_magic_num = 0xDEADEEEE;
+	emesh_stats_buffer->header.stats_version = 1;
+	emesh_stats_buffer->header.stats_type = RFS_STATS_DATA;
+	emesh_stats_buffer->header.payload_len = sizeof(struct telemetry_emesh_buffer);
+
+	ta_print_debug("Agent > %s len: %d\n", __func__,
+			emesh_stats_buffer->header.payload_len);
+
+	num_socs = g_agent_obj.agent_db.num_socs;
+	emesh_stats_buffer->relayfs_stats.num_soc = num_socs;
+
+	for (i = 0; i< num_socs; i++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
+		rfs_soc_stats = &emesh_stats_buffer->relayfs_stats.soc_stats[i];
+
+		num_pdevs = psoc_db->num_pdevs;
+
+		for (j = 0; j < num_pdevs; j++) {
+			pdev_db  = &psoc_db->pdev_db[j];
+			rfs_link_stats = &rfs_soc_stats->link_stats[j];
+			wifi_driver_get_emesh_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
+			rfs_link_stats->link_idle_airtime = pdev_stats.link_idle_airtime;
+			memcpy(&rfs_link_stats->link_mac[0],
+			       pdev_stats.link_mac,6);
+			num_peers = pdev_db->num_peers;
+			num_peers = 0;
+
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db, node);
+				if ((peer_db) && !wifi_driver_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
+				{
+					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
+					memcpy(&rfs_peer_stats->peer_link_mac[0],
+				    	peer_stats.peer_link_mac, 6);
+					memcpy(rfs_peer_stats->tx_airtime_consumption,
+					       peer_stats.tx_airtime_consumption,
+					       sizeof(rfs_peer_stats->tx_airtime_consumption));
+					num_peers++;
+				}
+			} /* peer */
+			spin_unlock_bh(&pdev_db->peer_db_lock);
+			rfs_link_stats->num_peers = num_peers;
+		} /* pdev */
+	} /* soc */
+
+	emesh_stats_buffer->end_magic_num = 0xEEEEDEAD;
+	relay_write(g_agent_obj.rfs_emesh_channel, emesh_stats_buffer,
+			sizeof(struct telemetry_emesh_buffer));
+	relay_flush(g_agent_obj.rfs_emesh_channel);
+
+	schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUECY));
 }
 
 
@@ -319,6 +392,12 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 	}
 
 	debugfs_remove_recursive(g_agent_obj.dir_ptr);
+
+	if (g_agent_obj.rfs_emesh_channel) {
+		relay_close(g_agent_obj.rfs_emesh_channel);
+	}
+
+	debugfs_remove_recursive(g_agent_obj.dir_emesh_ptr);
 	return STATUS_SUCCESS;
 }
 
@@ -334,6 +413,28 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rfs_channel) {
+		debugfs_remove_recursive(agent_obj->dir_ptr);
+		agent_obj->dir_ptr = NULL;
+		return -EPERM;
+	}
+
+	agent_obj->dir_emesh_ptr = debugfs_create_dir("qca_emesh_stats", NULL);
+	if (agent_obj->dir_emesh_ptr == NULL){
+		relay_close(agent_obj->rfs_channel);
+		debugfs_remove_recursive(agent_obj->dir_ptr);
+		agent_obj->dir_ptr = NULL;
+		return -EPERM;
+	}
+
+	agent_obj->rfs_emesh_channel = relay_open("telemetry_agent",
+			agent_obj->dir_emesh_ptr,
+			(sizeof(struct telemetry_emesh_buffer) + 1000), EMESH_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+
+	if (!agent_obj->rfs_emesh_channel) {
+		debugfs_remove_recursive(agent_obj->dir_emesh_ptr);
+		agent_obj->dir_emesh_ptr = NULL;
+		relay_close(g_agent_obj.rfs_channel);
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
@@ -580,6 +681,12 @@ static int telemetry_agent_init_module(void)
 {
 	int status = 0;
 
+	emesh_stats_buffer = kzalloc(sizeof(struct telemetry_emesh_buffer *),GFP_ATOMIC);
+	if (!emesh_stats_buffer)
+	{
+		ta_print_error("emesh stats buffer alloc failed");
+		return -EPERM;
+	}
 	register_telemetry_agent_ops(&agent_ops);
 	if(telemetry_agent_init_relayfs(&g_agent_obj) != STATUS_SUCCESS) {
 		return -EPERM;
@@ -587,6 +694,7 @@ static int telemetry_agent_init_module(void)
 	g_agent_obj.debug_mask = TA_PRINT_ERROR;
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_init, telemetry_agent_stats_work_init);
 	INIT_DELAYED_WORK(&g_agent_obj.stats_work_periodic, telemetry_agent_stats_work_periodic);
+	INIT_DELAYED_WORK(&g_agent_obj.emesh_stats_work_periodic, telemetry_emesh_stats_work_periodic);
 	telemetry_sawf_init_ctx();
 	return status;
 }
@@ -595,9 +703,11 @@ static void telemetry_agent_exit_module(void)
 {
 	cancel_delayed_work_sync(&g_agent_obj.stats_work_init);
 	cancel_delayed_work_sync(&g_agent_obj.stats_work_periodic);
+	cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
 	unregister_telemetry_agent_ops(&agent_ops);
 	memset(&g_agent_obj, 0, sizeof(struct telemetry_agent_object));
+	kfree(emesh_stats_buffer);
 	telemetry_sawf_free_ctx();
 	return;
 }

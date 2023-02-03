@@ -30,6 +30,7 @@
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
 #define AGENT_MAX_BUFFER_SIZE (85*1024)
+#define EMESH_MAX_SUB_BUFFERS 10
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  1000 /*in milli seconds */
 #define WLAN_TELEMETRY_STATS_SUPPORT 1
@@ -103,11 +104,16 @@ struct telemetry_agent_object {
 	uint32_t subbuf_size;
 	/* relay(fs) channel */
 	struct rchan *rfs_channel;
+	/* relay(fs) telemetry channel */
+	struct rchan *rfs_emesh_channel;
 	struct dentry *dir_ptr;
+	struct dentry *dir_emesh_ptr;
 	/* delyed work */
 	struct delayed_work stats_work_init;
 	/* delyed work periodic*/
 	struct delayed_work stats_work_periodic;
+	/* delayed telemetry work periodic*/
+	struct delayed_work emesh_stats_work_periodic;
 	/* pdev and peer objects */
 	struct agent_telemtry_db agent_db;
 	uint32_t debug_mask;

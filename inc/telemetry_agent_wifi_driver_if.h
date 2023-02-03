@@ -179,6 +179,16 @@ struct agent_link_iface_stats_obj {
     uint8_t freetime;
 };
 
+struct emesh_peer_iface_stats_obj {
+    uint8_t peer_link_mac[6];
+    uint16_t tx_airtime_consumption[WLAN_AC_MAX];
+};
+
+struct emesh_link_iface_stats_obj {
+    uint8_t link_mac[6];
+    uint8_t link_idle_airtime;
+};
+
 void wlan_cfg80211_t2lm_app_reply_init_response(void);
 int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
 int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);

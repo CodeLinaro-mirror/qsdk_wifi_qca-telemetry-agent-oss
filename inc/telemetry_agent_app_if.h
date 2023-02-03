@@ -19,7 +19,7 @@
 #define MAX_SOCS 3
 #define MAX_PDEV_LINKS 2
 #define MAX_MLD_LINKS 2
-#define MAX_PEERS 128
+#define MAX_MLO_PEERS 128
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
 #define RFS_STATS_DATA 2
@@ -36,12 +36,43 @@
    --------------------------------------------
  */
 
+#define MAX_PEERS 512
+
+struct emesh_peer_stats {
+    uint8_t peer_link_mac[6];
+    uint16_t tx_airtime_consumption[WLAN_AC_MAX];
+};
+
+struct emesh_link_stats {
+    uint8_t link_mac[6];
+    uint8_t link_idle_airtime;
+    int num_peers;
+    struct emesh_peer_stats peer_stats[MAX_PEERS];
+};
+
+struct emesh_soc_stats {
+    int num_links;
+    struct emesh_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+
+struct emesh_relyfs_stats {
+    int num_soc;
+    struct emesh_soc_stats soc_stats[MAX_SOCS];
+};
+
 struct telemetry_agent_header {
 	u_int32_t   start_magic_num;
 	u_int32_t   stats_version;
 	u_int32_t   stats_type;
 	u_int32_t   payload_len;
 } __attribute__ ((__packed__));
+
+struct telemetry_emesh_buffer {
+        struct telemetry_agent_header header;
+        struct emesh_relyfs_stats relayfs_stats;
+        u_int32_t   end_magic_num;
+};
 
 enum wlan_vendor_channel_width {
 	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
@@ -91,7 +122,7 @@ struct agent_link_stats {
 	uint32_t m3_stats[WLAN_AC_MAX];
 	uint32_t m4_stats[WLAN_AC_MAX];
 	uint16_t num_peers;
-	struct agent_peer_stats peer_stats[MAX_PEERS];
+	struct agent_peer_stats peer_stats[MAX_MLO_PEERS];
 };
 
 struct agent_soc_stats {
@@ -136,7 +167,7 @@ struct agent_link_init_stats {
 	uint8_t hw_link_id;
 	/* enum t2lm_band_caps band; */
 	uint16_t num_peers;
-	struct agent_peer_init_stats peer_stats[MAX_PEERS];
+	struct agent_peer_init_stats peer_stats[MAX_MLO_PEERS];
 };
 
 struct agent_soc_init_stats {
