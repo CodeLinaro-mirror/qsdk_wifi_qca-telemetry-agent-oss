@@ -61,6 +61,7 @@ struct telemetry_agent_ops {
     int  (*agent_set_param) (struct agent_config_params *params);
     int  (*agent_get_param) (struct agent_config_params *params);
     void (*agent_notify_app_event) (enum agent_notification_event);
+    void (*agent_notify_emesh_event) (enum agent_notification_event);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

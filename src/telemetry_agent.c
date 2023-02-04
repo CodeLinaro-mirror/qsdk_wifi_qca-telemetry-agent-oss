@@ -356,6 +356,24 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event)
 	return;
 }
 
+void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event event)
+{
+        ta_print_debug("Agent> %s event: %d\n", __func__, event);
+        switch(event) {
+                case AGENT_NOTIFY_EVENT_INIT:
+                        schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUECY));
+                        break;
+                case AGENT_NOTIFY_EVENT_DEINIT:
+                        relay_reset(g_agent_obj.rfs_emesh_channel);
+                        cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
+                        break;
+                default:
+                        break;
+        }
+        return;
+}
+
+
 static int remove_buf_file_handler(struct dentry *dentry)
 {
 	debugfs_remove(dentry);
@@ -659,6 +677,7 @@ struct telemetry_agent_ops agent_ops = {
 	agent_set_param:telemetry_agent_set_param_handler,
 	agent_get_param:telemetry_agent_get_param_handler,
 	agent_notify_app_event:telemetry_agent_notify_app_init,
+	agent_notify_emesh_event:telemetry_agent_notifiy_emesh_init_deinit,
 
 	/* SAWF-ops */
 	sawf_set_sla_dtct_cfg: telemetry_sawf_set_sla_detect_cfg,
