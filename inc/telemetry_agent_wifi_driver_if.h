@@ -197,6 +197,36 @@ int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats
 int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
 int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
 
+#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef QCA_SUPPORT_CP_STATS
+int wifi_driver_get_emesh_pdev_stats(void *obj,
+				     struct emesh_link_iface_stats_obj *stats);
+#else
+static inline
+int wifi_driver_get_emesh_pdev_stats(void *obj,
+				     struct emesh_link_iface_stats_obj *stats)
+{
+	return 0;
+}
+#endif
+int wifi_driver_get_emesh_peer_stats(void *obj,
+				     struct emesh_peer_iface_stats_obj *stats);
+#else /*WLAN_TELEMETRY_STATS_SUPPORT */
+static inline
+int wifi_driver_get_emesh_pdev_stats(void *obj,
+				     struct emesh_link_iface_stats_obj *stats)
+{
+	return 0;
+}
+
+static inline
+int wifi_driver_get_emesh_peer_stats(void *obj,
+				     struct emesh_peer_iface_stats_obj *stats)
+{
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_SAWF
 int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
                              uint64_t *in_cnt, uint64_t *tx_bytes,
