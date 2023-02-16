@@ -700,7 +700,7 @@ static int telemetry_agent_init_module(void)
 {
 	int status = 0;
 
-	emesh_stats_buffer = kzalloc(sizeof(struct telemetry_emesh_buffer *),GFP_ATOMIC);
+	emesh_stats_buffer = kzalloc(sizeof(struct telemetry_emesh_buffer),GFP_ATOMIC);
 	if (!emesh_stats_buffer)
 	{
 		ta_print_error("emesh stats buffer alloc failed");
