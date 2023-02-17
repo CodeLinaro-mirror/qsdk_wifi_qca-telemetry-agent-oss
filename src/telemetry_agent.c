@@ -69,9 +69,9 @@ void telemetry_emesh_stats_work_periodic(struct work_struct *work)
 		rfs_soc_stats = &emesh_stats_buffer->relayfs_stats.soc_stats[i];
 
 		num_pdevs = psoc_db->num_pdevs;
-
+		rfs_soc_stats->num_links = num_pdevs;
 		for (j = 0; j < num_pdevs; j++) {
-			pdev_db  = &psoc_db->pdev_db[j];
+			pdev_db = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
 			wifi_driver_get_emesh_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->link_idle_airtime = pdev_stats.link_idle_airtime;
