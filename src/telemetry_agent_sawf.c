@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -636,11 +636,8 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	tput->in_rate = in_rate;
 	tput->eg_rate = eg_rate;
 
-	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
-		pr_sawf_dbg("SLA Breach not configure for SVC ID: %d",
-			    svc_id);
+	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids))
 		return 0;
-	}
 
 	threshold = sla_param->min_thruput_rate;
 	if (threshold && sla_detect->min_thruput_rate) {
@@ -745,11 +742,8 @@ telemetry_detect_breach_peer_num_sec(struct telemetry_sawf_peer_ctx *peer,
 	msdu_drop->last_drop_cnt_seconds = drop;
 	msdu_drop->last_ttl_drop_cnt_seconds = drop_ttl;
 
-	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
-		pr_sawf_dbg("SLA Breach not configure for SVC ID: %d",
-			    svc_id);
+	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids))
 		return 0;
-	}
 
 	threshold = sla_param->burst_size;
 	if (threshold && sla_detect->burst_size) {
