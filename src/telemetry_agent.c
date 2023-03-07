@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -150,7 +150,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 		for (j = 0; j < num_pdevs; j++) {
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
 			memcpy(rfs_link_stats->available_airtime,
@@ -178,7 +178,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && !wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
 #endif
 				{
@@ -190,7 +190,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					memcpy(rfs_peer_stats->airtime_consumption,
 					       peer_stats.airtime_consumption,
 					       sizeof(rfs_peer_stats->airtime_consumption));
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 					if (!peer_stats.tx_mpdu_total)
 						rfs_peer_stats->m1_stats = 0;
 					else
@@ -244,7 +244,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	struct list_head *node;
 
 
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_init_response();
 #endif
 
@@ -261,7 +261,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[i];
 
 		/* call wifi driver and prepare RelayFS Message */
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 		wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats);
 #endif
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
@@ -273,7 +273,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		for (j = 0; j< num_pdevs; j++) {
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			wifi_driver_get_pdev_info(pdev_db->pdev_obj_ptr, &pdev_stats);
 #endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
@@ -283,7 +283,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && !wifi_driver_get_peer_info(peer_db->peer_obj_ptr, &peer_stats))
 #endif
                 {

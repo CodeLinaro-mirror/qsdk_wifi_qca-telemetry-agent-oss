@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +32,6 @@ agent and APP */
 #define EMESH_MAX_SUB_BUFFERS 10
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  1000 /*in milli seconds */
-#define WLAN_TELEMETRY_STATS_SUPPORT 1
 
 #define MAX_PDEV_LINKS_DB 3
 #define MAX_SOCS_DB 5
