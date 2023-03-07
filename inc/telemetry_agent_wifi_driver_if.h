@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -198,7 +198,7 @@ int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats
 int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
 int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
 
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 #ifdef QCA_SUPPORT_CP_STATS
 int wifi_driver_get_emesh_pdev_stats(void *obj,
 				     struct emesh_link_iface_stats_obj *stats);
@@ -212,7 +212,7 @@ int wifi_driver_get_emesh_pdev_stats(void *obj,
 #endif
 int wifi_driver_get_emesh_peer_stats(void *obj,
 				     struct emesh_peer_iface_stats_obj *stats);
-#else /*WLAN_TELEMETRY_STATS_SUPPORT */
+#else /*WLAN_CONFIG_TELEMETRY_AGENT */
 static inline
 int wifi_driver_get_emesh_pdev_stats(void *obj,
 				     struct emesh_link_iface_stats_obj *stats)
