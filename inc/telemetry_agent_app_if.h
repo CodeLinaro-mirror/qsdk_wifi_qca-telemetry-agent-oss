@@ -18,7 +18,7 @@
 
 #define MAX_SOCS 3
 #define MAX_PDEV_LINKS 2
-#define MAX_MLD_LINKS 2
+#define MAX_MLD_LINKS 4
 #define MAX_MLO_PEERS 128
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
