@@ -17,11 +17,6 @@
 #define __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__
 
 #include "telemetry_agent_app_if.h"
-struct agent_config_params {
-    int command;
-    int value;
-};
-
 struct agent_psoc_obj {
     void *psoc_back_pointer;
     spinlock_t psoc_lock;
@@ -51,6 +46,11 @@ enum agent_notification_event {
     AGENT_NOTIFY_EVENT_DEINIT,
 };
 
+enum agent_params {
+	AGENT_INVALID_PARAM,
+	AGENT_SET_DEBUG_LEVEL,
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -58,8 +58,8 @@ struct telemetry_agent_ops {
     int  (*agent_pdev_destroy_handler) (void *arg, struct agent_pdev_obj *pdev_obj);
     int  (*agent_peer_create_handler) (void *arg, struct agent_peer_obj *peer_obj);
     int  (*agent_peer_destroy_handler) (void *arg, struct agent_peer_obj *peer_obj);
-    int  (*agent_set_param) (struct agent_config_params *params);
-    int  (*agent_get_param) (struct agent_config_params *params);
+    int  (*agent_set_param) (int command, int value);
+    int  (*agent_get_param) (int command);
     void (*agent_notify_app_event) (enum agent_notification_event);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
 

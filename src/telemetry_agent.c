@@ -653,14 +653,24 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 	return status;
 }
 
-static int telemetry_agent_set_param_handler(struct agent_config_params *params)
+static int telemetry_agent_set_param_handler(int command, int value)
 {
 	int status = STATUS_SUCCESS;
 
+	switch (command)
+	{
+	case AGENT_SET_DEBUG_LEVEL:
+		g_agent_obj.debug_mask = value;
+		ta_print_debug("Agent > %s debug_mask=%d",
+			       __func__, g_agent_obj.debug_mask);
+		break;
+	default:
+		break;
+	}
 	return status;
 }
 
-static int telemetry_agent_get_param_handler(struct agent_config_params *params)
+static int telemetry_agent_get_param_handler(int command)
 {
 	int status = STATUS_SUCCESS;
 
