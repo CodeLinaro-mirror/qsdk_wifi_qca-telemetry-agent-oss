@@ -20,6 +20,7 @@
 struct telemetry_agent_object g_agent_obj; 
 struct telemetry_buffer stats_buffer;
 struct telemetry_emesh_buffer *emesh_stats_buffer;
+extern struct telemetry_agent_ops *g_agent_ops;
 
 /**
  *   print_mac_addr: prints the mac address.
@@ -73,7 +74,7 @@ void telemetry_emesh_stats_work_periodic(struct work_struct *work)
 		for (j = 0; j < num_pdevs; j++) {
 			pdev_db = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
-			wifi_driver_get_emesh_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
+			g_agent_ops->agent_get_emesh_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->link_idle_airtime = pdev_stats.link_idle_airtime;
 			memcpy(&rfs_link_stats->link_mac[0],
 			       pdev_stats.link_mac,6);
@@ -83,7 +84,7 @@ void telemetry_emesh_stats_work_periodic(struct work_struct *work)
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
-				if ((peer_db) && !wifi_driver_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
+				if ((peer_db) && !(g_agent_ops->agent_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats)))
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
 					memcpy(&rfs_peer_stats->peer_link_mac[0],
@@ -151,7 +152,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
+			g_agent_ops->agent_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
 			memcpy(rfs_link_stats->available_airtime,
 			       pdev_stats.available_airtime,
@@ -179,7 +180,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-				if ((peer_db) && !wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
+				if ((peer_db) && !(g_agent_ops->agent_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -262,7 +263,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 		/* call wifi driver and prepare RelayFS Message */
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-		wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats);
+		g_agent_ops->agent_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats);
 #endif
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
@@ -274,7 +275,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-			wifi_driver_get_pdev_info(pdev_db->pdev_obj_ptr, &pdev_stats);
+			g_agent_ops->agent_get_pdev_info(pdev_db->pdev_obj_ptr, &pdev_stats);
 #endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
 			num_peers = pdev_db->num_peers;
@@ -284,7 +285,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-				if ((peer_db) && !wifi_driver_get_peer_info(peer_db->peer_obj_ptr, &peer_stats))
+				if ((peer_db) && !(g_agent_ops->agent_get_peer_info(peer_db->peer_obj_ptr, &peer_stats)))
 #endif
                 {
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
