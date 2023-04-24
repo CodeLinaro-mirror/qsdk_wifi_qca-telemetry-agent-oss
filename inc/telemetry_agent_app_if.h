@@ -111,7 +111,7 @@ struct agent_peer_stats {
 	uint8_t m1_stats;
 	uint8_t m2_stats;
 	int8_t rssi;
-	bool is_sla;
+	uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
 };
 
 struct agent_link_stats {

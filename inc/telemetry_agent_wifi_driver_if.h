@@ -160,7 +160,7 @@ struct agent_peer_iface_stats_obj {
     uint32_t rx_mpdu_retried;
     uint32_t rx_mpdu_total;
     uint8_t rssi;
-    bool is_sla;
+    uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
 };
 
 struct agent_link_iface_stats_obj {

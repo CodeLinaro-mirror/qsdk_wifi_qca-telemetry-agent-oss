@@ -207,7 +207,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					peer_db->rx_mpdu_total = peer_stats.rx_mpdu_total;
 					peer_db->rx_mpdu_retried = peer_stats.rx_mpdu_retried;
 					rfs_peer_stats->rssi = peer_stats.rssi;
-					rfs_peer_stats->is_sla = peer_stats.is_sla;
+					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
 					num_mlo_peers++;
 				}
 			} /* peer */
