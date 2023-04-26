@@ -427,7 +427,7 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 
 	agent_obj->rfs_channel = relay_open("telemetry_agent",
 			agent_obj->dir_ptr,
-			AGENT_MAX_BUFFER_SIZE, MAX_SUB_BUFFERS,
+			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rfs_channel) {

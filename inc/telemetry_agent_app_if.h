@@ -16,9 +16,8 @@
 #ifndef __TELEMETRY_AGENT_APP_IF_H__
 #define __TELEMETRY_AGENT_APP_IF_H__
 
-#define MAX_SOCS 3
+#define MAX_SOCS 5
 #define MAX_PDEV_LINKS 2
-#define MAX_MLD_LINKS 4
 #define MAX_MLO_PEERS 128
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
@@ -129,7 +128,7 @@ struct agent_soc_stats {
 	uint8_t soc_id;
 	uint16_t num_peers;
 	uint8_t num_links;
-	struct agent_link_stats link_stats[MAX_MLD_LINKS];
+	struct agent_link_stats link_stats[MAX_PDEV_LINKS];
 };
 
 /* Periodic Stats */
