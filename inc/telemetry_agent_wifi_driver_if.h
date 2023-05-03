@@ -128,23 +128,18 @@ struct eht_peer_caps {
 struct agent_peer_iface_init_obj {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
-	uint8_t link_id;
-	uint8_t soc_id;
 	uint8_t bw;
 	uint16_t freq;
-	uint8_t rssi;
 	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
-	uint8_t link_tx_power;              /* Tx power of the STA */
-	uint8_t psd_flag;                   /* Is PSD channel or not */
-	uint8_t psd_eirp;    /* PSD power level */
 	struct eht_peer_caps caps;          /* Peer capabilities */
+	uint8_t ieee_link_id;
 };
 
 struct agent_pdev_iface_init_obj {
 	/* This info is stroed in telemetry pdev object,
 	 * so this can be ignored for now
 	 */
-	uint8_t link_id;
+	uint16_t link_id;
 	uint8_t soc_id;
 	uint8_t band;
 };
@@ -159,7 +154,6 @@ struct agent_psoc_iface_init_obj {
 struct agent_peer_iface_stats_obj {
     uint8_t peer_mld_mac[6];
     uint8_t peer_link_mac[6];
-    uint8_t link_id;
     uint8_t airtime_consumption[WLAN_AC_MAX];
     uint32_t tx_mpdu_retried;
     uint32_t tx_mpdu_total;
@@ -170,7 +164,7 @@ struct agent_peer_iface_stats_obj {
 };
 
 struct agent_link_iface_stats_obj {
-    uint8_t link_id;
+    uint16_t link_id;
     uint8_t soc_id;
     uint8_t available_airtime[WLAN_AC_MAX];
     uint32_t congestion[WLAN_AC_MAX];
