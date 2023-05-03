@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -114,7 +114,7 @@ struct agent_peer_stats {
 };
 
 struct agent_link_stats {
-	uint8_t hw_link_id;
+	uint16_t hw_link_id;
 	uint8_t link_airtime[WLAN_AC_MAX];
 	uint8_t freetime;
 	uint8_t available_airtime[WLAN_AC_MAX];
@@ -155,15 +155,13 @@ struct agent_peer_init_stats {
 	struct link_map_of_tids t2lm_info[MAX_T2LM_INFO]; /* T2LM mapping */
 	enum wlan_vendor_channel_width chan_bw;
 	uint16_t chan_freq;                  /* channel center frequency */
-	uint8_t link_tx_power;               /* tx power of the STA */
-	uint8_t psd_flag;                    /* is psd channel */
-	uint8_t psd_eirp;                    /* PSD power level */
 	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint8_t ieee_link_id;
 };
 
 struct agent_link_init_stats {
-	uint8_t hw_link_id;
+	uint16_t hw_link_id;
 	/* enum t2lm_band_caps band; */
 	uint16_t num_peers;
 	struct agent_peer_init_stats peer_stats[MAX_MLO_PEERS];
