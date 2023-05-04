@@ -445,8 +445,8 @@ static int telemetry_notify_breach(struct telemetry_sawf_peer_ctx *peer,
 
 static int
 telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
-				     uint8_t svc_id, uint8_t queue,
-				     uint64_t pass, uint64_t fail)
+					   uint8_t svc_id, uint8_t queue,
+					   uint64_t pass, uint64_t fail)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_svc_class_param *svc_param;
@@ -925,8 +925,8 @@ int telemetry_sawf_update_peer_delay(void *telemetry_ctx, uint8_t tid,
 
 	msduq = &peer_ctx->peer_msduq.msduq[queue];
 	telemetry_detect_breach_peer_delay_num_pkt(peer_ctx, msduq->svc_id,
-						   curr_success, curr_failure,
-						   queue);
+						   queue, curr_success,
+						   curr_failure);
 
 	return 0;
 }
