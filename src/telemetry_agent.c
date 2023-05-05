@@ -309,12 +309,12 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					rfs_peer_stats->chan_freq = peer_stats.freq;
 
 					memcpy(&rfs_peer_stats->tx_mcs_nss_map,
-							&peer_stats.caps.tx_mcs_nss_map,
-							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
+					       &peer_stats.caps.tx_mcs_nss_map,
+					       (sizeof(uint32_t) * WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX));
 
 					memcpy(&rfs_peer_stats->rx_mcs_nss_map,
-							&peer_stats.caps.rx_mcs_nss_map,
-							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
+					       &peer_stats.caps.rx_mcs_nss_map,
+					       (sizeof(uint32_t) * WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX));
 					rfs_peer_stats->ieee_link_id = peer_stats.ieee_link_id;
 
 					num_mlo_peers++;
