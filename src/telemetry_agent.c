@@ -207,7 +207,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					peer_db->rx_mpdu_total = peer_stats.rx_mpdu_total;
 					peer_db->rx_mpdu_retried = peer_stats.rx_mpdu_retried;
 					rfs_peer_stats->rssi = peer_stats.rssi;
-					rfs_peer_stats->is_sla = peer_stats.is_sla;
+					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
 					num_mlo_peers++;
 				}
 			} /* peer */
@@ -307,9 +307,6 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 					rfs_peer_stats->chan_bw = peer_stats.bw;
 					rfs_peer_stats->chan_freq = peer_stats.freq;
-					rfs_peer_stats->link_tx_power = peer_stats.link_tx_power;
-					rfs_peer_stats->psd_flag = peer_stats.psd_flag;
-					rfs_peer_stats->psd_eirp = peer_stats.psd_eirp;
 
 					memcpy(&rfs_peer_stats->tx_mcs_nss_map,
 							&peer_stats.caps.tx_mcs_nss_map,
@@ -318,6 +315,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					memcpy(&rfs_peer_stats->rx_mcs_nss_map,
 							&peer_stats.caps.rx_mcs_nss_map,
 							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
+					rfs_peer_stats->ieee_link_id = peer_stats.ieee_link_id;
 
 					num_mlo_peers++;
 				}
@@ -427,7 +425,7 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 
 	agent_obj->rfs_channel = relay_open("telemetry_agent",
 			agent_obj->dir_ptr,
-			AGENT_MAX_BUFFER_SIZE, MAX_SUB_BUFFERS,
+			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rfs_channel) {

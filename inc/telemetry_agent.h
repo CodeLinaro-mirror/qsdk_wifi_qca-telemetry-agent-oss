@@ -29,7 +29,6 @@
 #define STATUS_FAIL -1
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
-#define AGENT_MAX_BUFFER_SIZE (85*1024)
 #define EMESH_MAX_SUB_BUFFERS 10
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  1000 /*in milli seconds */
