@@ -634,14 +634,15 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 				continue;
 			}
 
-			if(MAC_ADDR_EQ(&peer_obj->peer_mac_addr[0], &peer_db->peer_mac_addr[0])) {
+			if (peer_obj->peer_back_pointer ==
+			    peer_db->peer_obj_ptr) {
 				node_remove = node;
 				peer_db_remove = peer_db;
 				break;
 			}
 		}
 
-	if(node_remove && peer_db_remove) {
+	if (node_remove && peer_db_remove) {
 		list_del(node);
 		kfree(peer_db_remove);
 	} else {
