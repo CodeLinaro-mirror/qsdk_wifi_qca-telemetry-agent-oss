@@ -79,8 +79,10 @@ int telemetry_sawf_set_sla_detect_cfg(uint8_t type,
 		return -1;
 	}
 
+	/* The type field denotes the type of SLA detect */
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[type];
 
+	/* Update the fields for which SLA detection is enabled */
 	sla_detect->min_thruput_rate = min_thruput_rate;
 	sla_detect->max_thruput_rate = max_thruput_rate;
 	sla_detect->burst_size = burst_size;
@@ -653,7 +655,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
 			pr_sawf_err("Configured Min Throughput: %d", throughput);
-			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
+			pr_sawf_err("Ingress Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,
 						queue, true,

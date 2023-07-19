@@ -129,13 +129,13 @@ enum telemetry_sawf_param {
  * @msdu_rate_loss:  msdu-loss rate
  */
 struct telemetry_sawf_svc_class_param {
-	uint8_t min_thruput_rate;
-	uint8_t max_thruput_rate;
-	uint8_t burst_size;
-	uint8_t service_interval;
-	uint8_t delay_bound;
-	uint8_t msdu_ttl;
-	uint8_t msdu_rate_loss;
+	uint32_t min_thruput_rate;
+	uint32_t max_thruput_rate;
+	uint32_t burst_size;
+	uint32_t service_interval;
+	uint32_t delay_bound;
+	uint32_t msdu_ttl;
+	uint32_t msdu_rate_loss;
 };
 
 /**
@@ -172,7 +172,7 @@ struct telemetry_sawf_sla_detect_cfg {
  * @sla_params: sla-params
  * @vc_class: service class params
  * @sla: sla config array for all service-classes
- * @sla_detect: sla-detect config
+ * @sla_detect: which type of SLA detections are enabled for a svc-class
  * @per_sec_timer: per-second timer list
  * @num_sec_timer: per-n-second timer list
  * @peer_list: list of peers
