@@ -51,6 +51,76 @@ enum agent_params {
 	AGENT_SET_DEBUG_LEVEL,
 };
 
+struct t2lm_of_tids {
+	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
+	uint8_t default_link_mapping;
+	uint16_t t2lm_provisioned_links[NUM_TIDS]; /*Bit0 for link0, bit1 for link1 and so on*/
+};
+
+struct eht_peer_caps {
+	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+};
+
+struct agent_peer_iface_init_obj {
+	uint8_t peer_mld_mac[6];
+	uint8_t peer_link_mac[6];
+	uint8_t bw;
+	uint16_t freq;
+	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
+	struct eht_peer_caps caps;          /* Peer capabilities */
+	uint8_t ieee_link_id;
+};
+
+struct agent_pdev_iface_init_obj {
+	/* This info is stroed in telemetry pdev object,
+	 * so this can be ignored for now
+	 */
+	uint16_t link_id;
+	uint8_t soc_id;
+	uint8_t band;
+};
+
+struct agent_psoc_iface_init_obj {
+	uint8_t soc_id;
+	uint16_t max_peers;
+	uint16_t num_peers;
+
+};
+
+struct agent_peer_iface_stats_obj {
+    uint8_t peer_mld_mac[6];
+    uint8_t peer_link_mac[6];
+    uint8_t airtime_consumption[WLAN_AC_MAX];
+    uint32_t tx_mpdu_retried;
+    uint32_t tx_mpdu_total;
+    uint32_t rx_mpdu_retried;
+    uint32_t rx_mpdu_total;
+    uint8_t rssi;
+    uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
+};
+
+struct agent_link_iface_stats_obj {
+    uint16_t link_id;
+    uint8_t soc_id;
+    uint8_t available_airtime[WLAN_AC_MAX];
+    uint32_t congestion[WLAN_AC_MAX];
+    uint32_t tx_mpdu_failed[WLAN_AC_MAX];
+    uint32_t tx_mpdu_total[WLAN_AC_MAX];
+    uint8_t link_airtime[WLAN_AC_MAX];
+    uint8_t freetime;
+};
+
+struct emesh_peer_iface_stats_obj {
+    uint8_t peer_link_mac[6];
+    uint16_t tx_airtime_consumption[WLAN_AC_MAX];
+};
+
+struct emesh_link_iface_stats_obj {
+    uint8_t link_mac[6];
+    uint8_t link_idle_airtime;
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -62,6 +132,13 @@ struct telemetry_agent_ops {
     int  (*agent_get_param) (int command);
     void (*agent_notify_app_event) (enum agent_notification_event);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
+    int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
+    int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
+    int (*agent_get_peer_info) (void *obj, struct agent_peer_iface_init_obj *stats);
+    int (*agent_get_pdev_stats) (void *obj, struct agent_link_iface_stats_obj *stats);
+    int (*agent_get_peer_stats) (void *obj, struct agent_peer_iface_stats_obj *stats);
+    int (*agent_get_emesh_pdev_stats) (void *obj, struct emesh_link_iface_stats_obj *stats);
+    int (*agent_get_emesh_peer_stats) (void *obj, struct emesh_peer_iface_stats_obj *stats);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
@@ -112,173 +189,20 @@ struct telemetry_agent_ops {
                                uint8_t queue, uint32_t *nwdelay_avg,
                                uint32_t *swdelay_avg, uint32_t *hwdelay_avg);
     int (* sawf_reset_peer_stats) (uint8_t *mac_addr);
-};
-
-struct t2lm_of_tids {
-	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
-	uint8_t default_link_mapping;
-	uint16_t t2lm_provisioned_links[NUM_TIDS]; /*Bit0 for link0, bit1 for link1 and so on*/
-};
-
-struct eht_peer_caps {
-	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
-	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
-};
-
-struct agent_peer_iface_init_obj {
-	uint8_t peer_mld_mac[6];
-	uint8_t peer_link_mac[6];
-	uint8_t link_id;
-	uint8_t soc_id;
-	uint8_t bw;
-	uint16_t freq;
-	uint8_t rssi;
-	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
-	uint8_t link_tx_power;              /* Tx power of the STA */
-	uint8_t psd_flag;                   /* Is PSD channel or not */
-	uint8_t psd_eirp;    /* PSD power level */
-	struct eht_peer_caps caps;          /* Peer capabilities */
-};
-
-struct agent_pdev_iface_init_obj {
-	/* This info is stroed in telemetry pdev object,
-	 * so this can be ignored for now
-	 */
-	uint8_t link_id;
-	uint8_t soc_id;
-	uint8_t band;
-};
-
-struct agent_psoc_iface_init_obj {
-	uint8_t soc_id;
-	uint16_t max_peers;
-	uint16_t num_peers;
-
-};
-
-struct agent_peer_iface_stats_obj {
-    uint8_t peer_mld_mac[6];
-    uint8_t peer_link_mac[6];
-    uint8_t link_id;
-    uint8_t airtime_consumption[WLAN_AC_MAX];
-    uint32_t tx_mpdu_retried;
-    uint32_t tx_mpdu_total;
-    uint32_t rx_mpdu_retried;
-    uint32_t rx_mpdu_total;
-    uint8_t rssi;
-    bool is_sla;
-};
-
-struct agent_link_iface_stats_obj {
-    uint8_t link_id;
-    uint8_t soc_id;
-    uint8_t available_airtime[WLAN_AC_MAX];
-    uint32_t congestion[WLAN_AC_MAX];
-    uint32_t tx_mpdu_failed[WLAN_AC_MAX];
-    uint32_t tx_mpdu_total[WLAN_AC_MAX];
-    uint8_t link_airtime[WLAN_AC_MAX];
-    uint8_t freetime;
-};
-
-struct emesh_peer_iface_stats_obj {
-    uint8_t peer_link_mac[6];
-    uint16_t tx_airtime_consumption[WLAN_AC_MAX];
-};
-
-struct emesh_link_iface_stats_obj {
-    uint8_t link_mac[6];
-    uint8_t link_idle_airtime;
+    int (* sawf_get_tput_stats) (void *soc, void *arg, uint64_t *in_bytes,
+                                 uint64_t *in_cnt, uint64_t *tx_bytes,
+                                 uint64_t *tx_cnt, uint8_t tid,
+                                 uint8_t msduq);
+    int (* sawf_get_mpdu_stats) (void *soc, void *arg, uint64_t *svc_int_pass,
+                                 uint64_t *svc_int_fail, uint64_t *burst_pass,
+                                 uint64_t *burst_fail, uint8_t tid,
+                                 uint8_t msduq);
+    int (* sawf_get_drop_stats) (void *soc, void *arg, uint64_t *pass,
+                                 uint64_t *drop, uint64_t *drop_ttl,
+                                 uint8_t tid, uint8_t msduq);
+    void (* sawf_notify_breach) (uint8_t *mac_addr, uint8_t svc_id,
+                                 uint8_t param, bool set_clear, uint8_t tid);
 };
 
 void wlan_cfg80211_t2lm_app_reply_init_response(void);
-int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
-int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);
-int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats);
-
-int wifi_driver_get_pdev_stats(void *obj, struct agent_link_iface_stats_obj *stats);
-int wifi_driver_get_peer_stats(void *obj, struct agent_peer_iface_stats_obj *stats);
-
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
-#ifdef QCA_SUPPORT_CP_STATS
-int wifi_driver_get_emesh_pdev_stats(void *obj,
-				     struct emesh_link_iface_stats_obj *stats);
-#else
-static inline
-int wifi_driver_get_emesh_pdev_stats(void *obj,
-				     struct emesh_link_iface_stats_obj *stats)
-{
-	return 0;
-}
-#endif
-int wifi_driver_get_emesh_peer_stats(void *obj,
-				     struct emesh_peer_iface_stats_obj *stats);
-#else /*WLAN_CONFIG_TELEMETRY_AGENT */
-static inline
-int wifi_driver_get_emesh_pdev_stats(void *obj,
-				     struct emesh_link_iface_stats_obj *stats)
-{
-	return 0;
-}
-
-static inline
-int wifi_driver_get_emesh_peer_stats(void *obj,
-				     struct emesh_peer_iface_stats_obj *stats)
-{
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_SAWF
-int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
-                             uint64_t *in_cnt, uint64_t *tx_bytes,
-                             uint64_t *tx_cnt, uint8_t tid,
-                             uint8_t msduq);
-int wlan_sawf_get_mpdu_stats(void *soc, void *arg,
-                             uint64_t *svc_int_pass,
-                             uint64_t *svc_int_fail,
-                             uint64_t *burst_pass, uint64_t *burst_fail,
-                             uint8_t tid, uint8_t msduq);
-int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
-                             uint64_t *drop, uint64_t *drop_ttl,
-                             uint8_t tid, uint8_t msduq);
-void wlan_sawf_notify_breach(uint8_t *mac_addr,
-			     uint8_t svc_id,
-			     uint8_t param,
-			     bool set_clear,
-			     uint8_t tid);
-#else
-static inline
-int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,
-			     uint64_t *in_cnt, uint64_t *tx_bytes,
-			     uint64_t *tx_cnt, uint8_t tid, uint8_t msduq)
-{
-	return 0;
-}
-
-static inline
-int wlan_sawf_get_mpdu_stats(void *soc, void *arg, uint64_t *svc_int_pass,
-			     uint64_t *svc_int_fail,
-			     uint64_t *burst_pass, uint64_t *burst_fail,
-			     uint8_t tid, uint8_t msduq)
-{
-	return 0;
-}
-
-static inline
-int wlan_sawf_get_drop_stats(void *soc, void *arg, uint64_t *pass,
-			     uint64_t *drop, uint64_t *drop_ttl,
-			     uint8_t tid, uint8_t msduq)
-{
-	return 0;
-}
-
-static inline
-void wlan_sawf_notify_breach(uint8_t *mac_addr,
-			     uint8_t svc_id,
-			     uint8_t param,
-			     bool set_clear,
-			     uint8_t tid)
-{
-}
-#endif
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */
