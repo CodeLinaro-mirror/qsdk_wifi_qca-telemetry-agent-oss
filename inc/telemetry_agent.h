@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,6 +30,7 @@
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
 #define EMESH_MAX_SUB_BUFFERS 10
+#define DETER_MAX_SUB_BUFFERS 10
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  1000 /*in milli seconds */
 
@@ -86,6 +87,7 @@ struct agent_pdev_db {
 	int num_peers;
 	spinlock_t peer_db_lock;
 	struct list_head peer_db_list;
+	struct deter_peer_iface_stats_obj peer_stats;
 };
 
 struct agent_soc_db {
@@ -112,6 +114,12 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_init_pmlo;
 	/* delyed work periodic for pmlo service*/
 	struct delayed_work stats_work_periodic_pmlo;
+	/* relay(fs) telemetry channel for deterministic scheduler*/
+	struct rchan *rfs_channel_deter;
+	/* delyed work for deter sched service */
+	struct delayed_work stats_work_init_deter;
+	/* delayed telemetry deterministic stats work periodic*/
+	struct delayed_work stats_work_periodic_deter;
 };
 
 struct telemetry_agent_object {

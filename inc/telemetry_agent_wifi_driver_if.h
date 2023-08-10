@@ -125,6 +125,27 @@ struct emesh_link_iface_stats_obj {
     uint8_t link_idle_airtime;
 };
 
+struct deter_peer_iface_stats_obj {
+    uint8_t peer_link_mac[6];
+    struct deter_peer_iface_stats deter[NUM_TIDS];
+    uint8_t vdev_id;
+};
+
+struct deter_link_iface_stats_obj {
+    uint8_t link_mac[6];
+    uint8_t hw_link_id;
+    uint64_t dl_ofdma_usr[MU_MAX_USERS];
+    uint64_t ul_ofdma_usr[MU_MAX_USERS];
+    uint64_t dl_mimo_usr[MUMIMO_MAX_USERS];
+    uint64_t ul_mimo_usr[MUMIMO_MAX_USERS];
+    uint64_t dl_mode_cnt[TX_DL_MAX];
+    uint64_t ul_mode_cnt[TX_UL_MAX];
+    uint64_t rx_su_cnt;
+    uint32_t ch_access_delay[WLAN_AC_MAX];
+    struct deter_link_chan_util_stats ch_util;
+    struct deter_link_ul_trigger_status ts[TX_UL_MAX];
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -144,6 +165,8 @@ struct telemetry_agent_ops {
     int (*agent_get_peer_stats) (void *obj, struct agent_peer_iface_stats_obj *stats);
     int (*agent_get_emesh_pdev_stats) (void *obj, struct emesh_link_iface_stats_obj *stats);
     int (*agent_get_emesh_peer_stats) (void *obj, struct emesh_peer_iface_stats_obj *stats);
+    int (*agent_get_deter_pdev_stats) (void *obj, struct deter_link_iface_stats_obj *stats);
+    int (*agent_get_deter_peer_stats) (void *obj, struct deter_peer_iface_stats_obj *stats);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

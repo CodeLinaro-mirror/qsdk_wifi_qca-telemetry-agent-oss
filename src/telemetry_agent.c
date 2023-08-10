@@ -21,6 +21,7 @@
 struct telemetry_agent_object g_agent_obj; 
 struct telemetry_buffer stats_buffer;
 struct telemetry_emesh_buffer *emesh_stats_buffer;
+struct telemetry_deter_buffer *deter_stats_buffer;
 extern struct telemetry_agent_ops *g_agent_ops;
 
 /**
@@ -35,6 +36,96 @@ static char *print_mac_addr(const uint8_t *mac)
 	snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
 			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	return buf;
+}
+
+void telemetry_print_mac_addr(const uint8_t *mac)
+{
+	ta_print_debug("Agent > %s pdev_mac: %02x:%02x:%02x:%02x:%02x:%02x",
+			__func__, mac[0], mac[1], mac[2], mac[3], mac[4],
+			mac[5]);
+}
+
+void telemetry_deter_stats_work_periodic(struct work_struct *work)
+{
+	int i = 0, j = 0;
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_peer_db *peer_db = NULL;
+	int num_socs = 0;
+	int num_pdevs = 0;
+	int num_peers = 0;
+	struct deter_link_iface_stats_obj pdev_stats = {0};
+	struct deter_peer_iface_stats_obj *peer_stats = NULL;
+
+	struct deter_soc_stats *rfs_soc_stats = NULL;
+	struct deter_link_stats *rfs_link_stats = NULL;
+	struct deter_peer_stats *rfs_peer_stats = NULL;
+	struct list_head *node;
+
+	num_socs = g_agent_obj.agent_db.num_socs;
+	ta_print_debug("Agent > %s Num Socs: %d",__func__, num_socs);
+
+	for (i = 0; i< num_socs; i++) {
+		memset(deter_stats_buffer, 0, sizeof(struct telemetry_deter_buffer));
+
+		ta_print_debug("Agent > %s len: %d\n", __func__,
+				deter_stats_buffer->header.payload_len);
+
+		deter_stats_buffer->header.start_magic_num = 0xFEEDEEEE;
+		deter_stats_buffer->header.stats_version = 1;
+		deter_stats_buffer->header.stats_type = RFS_STATS_DATA;
+		deter_stats_buffer->header.payload_len = sizeof(struct telemetry_deter_buffer);
+
+		deter_stats_buffer->relayfs_stats.num_soc = num_socs;
+
+		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
+		deter_stats_buffer->relayfs_stats.soc_stats.soc_id = psoc_db->soc_id;
+
+		rfs_soc_stats = &deter_stats_buffer->relayfs_stats.soc_stats;
+
+		num_pdevs = psoc_db->num_pdevs;
+		ta_print_debug("Agent > %s No of pdev:%d",__func__, num_pdevs);
+
+		rfs_soc_stats->num_links = num_pdevs;
+		for (j = 0; j < num_pdevs; j++) {
+			pdev_db = &psoc_db->pdev_db[j];
+			rfs_link_stats = &rfs_soc_stats->link_stats[j];
+			g_agent_ops->agent_get_deter_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
+
+			memcpy(&rfs_link_stats->link_mac[0],
+			       pdev_stats.link_mac,6);
+			rfs_link_stats->hw_link_id = pdev_stats.hw_link_id;
+			ta_print_debug("Agent > %s: Hw Link ID: %d",__func__,pdev_stats.hw_link_id);
+			num_peers = 0;
+			ta_print_debug("pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db, node);
+				peer_stats = &pdev_db->peer_stats;
+				if (!peer_stats) {
+					ta_print_error("Agent > %s\n: error allocating peer_stats",__func__);
+				};
+				memset(peer_stats, 0, sizeof(struct deter_peer_iface_stats_obj));
+				if ((peer_db) && !g_agent_ops->agent_get_deter_peer_stats(peer_db->peer_obj_ptr, peer_stats))
+				{
+					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers++];
+					memcpy(&rfs_peer_stats->peer_link_mac[0],
+					peer_stats->peer_link_mac, 6);
+					memcpy(&rfs_peer_stats->deter,
+					&peer_stats->deter,sizeof(rfs_peer_stats->deter));
+					rfs_peer_stats->vdev_id = peer_stats->vdev_id;
+				}
+			} /* peer */
+			spin_unlock_bh(&pdev_db->peer_db_lock);
+			rfs_link_stats->num_peers = num_peers;
+		}/* pdev */
+		deter_stats_buffer->end_magic_num = 0xFEEDEEEE ^ i;
+		relay_write(g_agent_obj.rm_telemetry.rfs_channel_deter, deter_stats_buffer,
+					sizeof(struct telemetry_deter_buffer));
+		relay_flush(g_agent_obj.rm_telemetry.rfs_channel_deter);
+	} /* soc */
+
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUECY));
 }
 
 void telemetry_emesh_stats_work_periodic(struct work_struct *work)
@@ -105,7 +196,6 @@ void telemetry_emesh_stats_work_periodic(struct work_struct *work)
 	relay_write(g_agent_obj.rfs_emesh_channel, emesh_stats_buffer,
 			sizeof(struct telemetry_emesh_buffer));
 	relay_flush(g_agent_obj.rfs_emesh_channel);
-
 	schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUECY));
 }
 
@@ -256,7 +346,6 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_MAIN_SERVICE);
 #endif
-
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;
 	stats_buffer.header.stats_version = 1;
 	stats_buffer.header.stats_type = RFS_INIT_DATA;
@@ -360,6 +449,14 @@ void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
 	return;
 }
 
+void telemetry_agent_deter_stats_work_init(struct work_struct *work)
+{
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_DETSCHED_SERVICE);
+#endif
+	return;
+}
+
 static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 						struct delayed_work **work_init,
 						struct delayed_work **work_periodic,
@@ -378,6 +475,13 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_pmlo;
 			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_pmlo;
 			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_pmlo;
+			break;
+		}
+		case RM_DETSCHED_SERVICE:
+		{
+			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_deter;
+			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_deter;
+			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_deter;
 			break;
 		}
 		default:
@@ -485,6 +589,10 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 	if (g_agent_obj.rm_telemetry.rfs_channel_pmlo)
 		relay_close(g_agent_obj.rm_telemetry.rfs_channel_pmlo);
 
+	if (g_agent_obj.rm_telemetry.rfs_channel_deter) {
+		relay_close(g_agent_obj.rm_telemetry.rfs_channel_deter);
+	}
+
 	debugfs_remove_recursive(g_agent_obj.dir_ptr);
 
 	if (g_agent_obj.rfs_emesh_channel) {
@@ -492,6 +600,7 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 	}
 
 	debugfs_remove_recursive(g_agent_obj.dir_emesh_ptr);
+
 	return STATUS_SUCCESS;
 }
 
@@ -517,6 +626,20 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rm_telemetry.rfs_channel_pmlo) {
+		debugfs_remove_recursive(agent_obj->dir_ptr);
+		agent_obj->dir_ptr = NULL;
+		return -EPERM;
+	}
+
+	agent_obj->rm_telemetry.rfs_channel_deter = relay_open("ds_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_deter_buffer) + 1000), DETER_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+
+	if (!agent_obj->rm_telemetry.rfs_channel_deter) {
+		relay_close(agent_obj->rfs_emesh_channel);
+		debugfs_remove_recursive(agent_obj->dir_emesh_ptr);
+		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
@@ -562,7 +685,6 @@ static int telemetry_agent_psoc_create_handler(void *arg, struct agent_psoc_obj 
 
 	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_db->psoc_obj_ptr, psoc_db->soc_id);
-
 	g_agent_obj.agent_db.num_socs++;
 
 	return status;
@@ -803,6 +925,13 @@ static int telemetry_agent_init_module(void)
 		ta_print_error("emesh stats buffer alloc failed");
 		return -EPERM;
 	}
+
+	deter_stats_buffer = kzalloc(sizeof(struct telemetry_deter_buffer),GFP_ATOMIC);
+	if (!deter_stats_buffer)
+	{
+		ta_print_error("deter stats buffer alloc failed");
+		return -EPERM;
+	}
 	register_telemetry_agent_ops(&agent_ops);
 	if(telemetry_agent_init_relayfs(&g_agent_obj) != STATUS_SUCCESS) {
 		return -EPERM;
@@ -811,7 +940,10 @@ static int telemetry_agent_init_module(void)
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_main, telemetry_agent_stats_work_init_main);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_pmlo, telemetry_agent_stats_work_init_pmlo);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, telemetry_agent_stats_work_periodic_pmlo);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_deter, telemetry_agent_deter_stats_work_init);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, telemetry_deter_stats_work_periodic);
 	INIT_DELAYED_WORK(&g_agent_obj.emesh_stats_work_periodic, telemetry_emesh_stats_work_periodic);
+
 	telemetry_sawf_init_ctx();
 	return status;
 }
@@ -821,6 +953,8 @@ static void telemetry_agent_exit_module(void)
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_main);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_pmlo);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_deter);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_deter);
 	cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
 	unregister_telemetry_agent_ops(&agent_ops);
