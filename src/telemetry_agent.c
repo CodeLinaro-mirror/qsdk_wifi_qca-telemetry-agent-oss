@@ -134,12 +134,14 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 	ta_print_debug("Agent > %s len: %d\n", __func__,
 			stats_buffer.header.payload_len);
 
-	num_socs = g_agent_obj.agent_db.num_socs;
-	stats_buffer.u.periodic_stats.num_soc = num_socs;
 
-	for (i = 0; i< num_socs; i++) {
+	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
-		rfs_soc_stats = &stats_buffer.u.periodic_stats.soc_stats[i];
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+		if (wifi_driver_get_psoc_stats(psoc_db->psoc_obj_ptr))
+			continue;
+#endif
+		rfs_soc_stats = &stats_buffer.u.periodic_stats.soc_stats[num_socs];
 
 		/* call wifi driver and prepare RelayFS Message */
 		rfs_soc_stats->soc_id = psoc_db->soc_id;
@@ -214,8 +216,10 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
+		num_socs++;
 	} /* soc */
 
+	stats_buffer.u.periodic_stats.num_soc = num_socs;
 	stats_buffer.end_magic_num = 0xBEAFDEAD;
 	relay_write(g_agent_obj.rfs_channel, &stats_buffer,
 			sizeof(struct telemetry_buffer));
@@ -253,17 +257,15 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	stats_buffer.header.stats_type = RFS_INIT_DATA;
 	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
 
-	num_socs = g_agent_obj.agent_db.num_socs;
-	stats_buffer.u.init_stats.num_soc = num_socs;
-
-	for (i = 0; i < num_socs; i++) {
+	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
-		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[i];
 
 		/* call wifi driver and prepare RelayFS Message */
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-		wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats);
+		if (wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats))
+			continue;
 #endif
+		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[num_socs];
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
@@ -325,8 +327,10 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
+		num_socs++;
 	} /* soc */
 
+	stats_buffer.u.init_stats.num_soc = num_socs;
 	stats_buffer.end_magic_num = 0xBEAFDEAD;
 	relay_write(g_agent_obj.rfs_channel, &stats_buffer,
 			sizeof(struct telemetry_buffer));
