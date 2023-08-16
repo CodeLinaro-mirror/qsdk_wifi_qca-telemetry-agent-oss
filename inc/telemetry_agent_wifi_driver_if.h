@@ -184,7 +184,7 @@ struct emesh_link_iface_stats_obj {
     uint8_t link_idle_airtime;
 };
 
-void wlan_cfg80211_t2lm_app_reply_init_response(void);
+void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data);
 int wifi_driver_get_psoc_info(void *obj, struct agent_psoc_iface_init_obj *stats);
 int wifi_driver_get_pdev_info(void *obj, struct agent_pdev_iface_init_obj *stats);
 int wifi_driver_get_peer_info(void *obj, struct agent_peer_iface_init_obj *stats);
