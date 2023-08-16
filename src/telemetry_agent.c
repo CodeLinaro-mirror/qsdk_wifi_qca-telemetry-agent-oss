@@ -182,7 +182,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-				if ((peer_db) && !(g_agent_ops->agent_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats)))
+				if ((peer_db) && !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -254,7 +254,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-	wlan_cfg80211_t2lm_app_reply_init_response();
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL);
 #endif
 
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;

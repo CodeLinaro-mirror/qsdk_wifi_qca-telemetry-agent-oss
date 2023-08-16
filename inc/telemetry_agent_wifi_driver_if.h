@@ -205,5 +205,5 @@ struct telemetry_agent_ops {
                                  uint8_t param, bool set_clear, uint8_t tid);
 };
 
-void wlan_cfg80211_t2lm_app_reply_init_response(void);
+void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data);
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */
