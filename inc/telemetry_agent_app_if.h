@@ -19,13 +19,13 @@
 #define MAX_SOCS 5
 #define MAX_PDEV_LINKS 2
 #define MAX_MLD_LINKS 2
-#define MAX_MLO_PEERS 128
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
 #define RFS_STATS_DATA 2
 #define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
 #define MAX_T2LM_INFO 2
 #define WLAN_AC_MAX 4
+#define MAX_PEERS 512
 
 /*
    Buffer Format
@@ -35,8 +35,6 @@
    |          |                  |            |
    --------------------------------------------
  */
-
-#define MAX_PEERS 512
 
 struct emesh_peer_stats {
     uint8_t peer_link_mac[6];
@@ -122,7 +120,7 @@ struct agent_link_stats {
 	uint32_t m3_stats[WLAN_AC_MAX];
 	uint32_t m4_stats[WLAN_AC_MAX];
 	uint16_t num_peers;
-	struct agent_peer_stats peer_stats[MAX_MLO_PEERS];
+	struct agent_peer_stats peer_stats[MAX_PEERS];
 };
 
 struct agent_soc_stats {
@@ -165,7 +163,7 @@ struct agent_link_init_stats {
 	uint16_t hw_link_id;
 	/* enum t2lm_band_caps band; */
 	uint16_t num_peers;
-	struct agent_peer_init_stats peer_stats[MAX_MLO_PEERS];
+	struct agent_peer_init_stats peer_stats[MAX_PEERS];
 };
 
 struct agent_soc_init_stats {

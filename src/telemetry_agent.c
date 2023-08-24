@@ -213,7 +213,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					num_mlo_peers++;
 				}
 
-				if (num_mlo_peers >= MAX_MLO_PEERS)
+				if (num_mlo_peers >= MAX_PEERS)
 					break;
 
 			} /* peer */
@@ -326,7 +326,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					num_mlo_peers++;
 				}
 
-				if (num_mlo_peers >= MAX_MLO_PEERS)
+				if (num_mlo_peers >= MAX_PEERS)
 					break;
 
 			} /* peer */
