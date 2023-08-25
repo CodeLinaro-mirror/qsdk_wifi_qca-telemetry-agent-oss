@@ -213,6 +213,10 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
 					num_mlo_peers++;
 				}
+
+				if (num_mlo_peers >= MAX_MLO_PEERS)
+					break;
+
 			} /* peer */
 			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
@@ -322,6 +326,9 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 
 					num_mlo_peers++;
 				}
+
+				if (num_mlo_peers >= MAX_MLO_PEERS)
+					break;
 
 			} /* peer */
 
