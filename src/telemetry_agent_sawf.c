@@ -650,8 +650,10 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	threshold = sla_param->min_thruput_rate;
 	if (threshold && sla_detect->min_thruput_rate) {
 		throughput = svc_param->min_thruput_rate * THROUGHPUT_UNIT;
-		if (tput->in_rate > throughput &&
-		    tput->eg_rate < div_u64((throughput * threshold), 100)) {
+		if ((in_rate > throughput &&
+		    eg_rate < div_u64((throughput * threshold), 100)) ||
+		    (in_rate <= throughput &&
+		     eg_rate < div_u64((in_rate * threshold), 100))) {
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
 			pr_sawf_err("Configured Min Throughput: %d", throughput);
@@ -660,12 +662,16 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			telemetry_notify_breach(peer, svc_id,
 						queue, true,
 					        SAWF_PARAM_MIN_THROUGHPUT);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+					        SAWF_PARAM_MIN_THROUGHPUT);
 		}
 	}
 	threshold = sla_param->max_thruput_rate;
 	if (threshold && sla_detect->max_thruput_rate) {
-		throughput = sla_param->max_thruput_rate * THROUGHPUT_UNIT;
-		if (in_rate > svc_param->max_thruput_rate &&
+		throughput = svc_param->max_thruput_rate * THROUGHPUT_UNIT;
+		if (in_rate > throughput &&
 		    eg_rate < div_u64((throughput * threshold), 100)) {
 			pr_sawf_err("SLA Max Throughput Breach Detected peer service ID:%d",
 				    svc_id);
