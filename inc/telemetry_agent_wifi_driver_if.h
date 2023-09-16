@@ -65,6 +65,8 @@ struct eht_peer_caps {
 struct agent_peer_iface_init_obj {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
+	uint8_t ap_mld_addr[6];
+	uint8_t vdev_id;
 	uint8_t bw;
 	uint16_t freq;
 	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */

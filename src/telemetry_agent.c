@@ -324,6 +324,9 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					       &peer_stats.caps.rx_mcs_nss_map,
 					       (sizeof(uint32_t) * WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX));
 					rfs_peer_stats->ieee_link_id = peer_stats.ieee_link_id;
+					rfs_peer_stats->vdev_id = peer_stats.vdev_id;
+					memcpy(&rfs_peer_stats->ap_mld_addr[0],
+						peer_stats.ap_mld_addr, 6);
 
 					num_mlo_peers++;
 				}
