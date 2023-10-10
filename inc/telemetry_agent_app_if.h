@@ -110,6 +110,7 @@ struct agent_peer_stats {
 	uint8_t m1_stats;
 	uint8_t m2_stats;
 	int8_t rssi;
+	int16_t eff_chan_bandwidth;
 	uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
 };
 
