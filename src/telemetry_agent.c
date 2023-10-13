@@ -211,6 +211,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					peer_db->rx_mpdu_retried = peer_stats.rx_mpdu_retried;
 					rfs_peer_stats->rssi = peer_stats.rssi;
 					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
+					rfs_peer_stats->eff_chan_bandwidth = peer_db->eff_chan_bw;
 					num_mlo_peers++;
 				}
 
