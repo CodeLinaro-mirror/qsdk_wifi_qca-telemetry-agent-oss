@@ -23,9 +23,6 @@
 
 #define SAWF_MIN_SVC_CLASS 1
 #define SAWF_MAX_SVC_CLASS 128
-#define SAWF_MAX_TID 8
-#define SAWF_MAXQ_PTID 2
-#define SAWF_MAX_QUEUES (SAWF_MAX_TID * SAWF_MAXQ_PTID)
 #define SAWF_MAX_LATENCY_TYPE 3
 
 #define MSEC_TO_JIFFIES(x) jiffies + msecs_to_jiffies(x)
@@ -315,7 +312,7 @@ struct sawf_msduq {
  */
 struct peer_sawf_queue {
 	DECLARE_BITMAP(active_queue, SAWF_MAX_QUEUES);
-	uint8_t msduq_map[SAWF_MAX_TID][SAWF_MAXQ_PTID];
+	uint8_t msduq_map[NUM_TIDS][SAWF_MAXQ_PTID];
 	struct sawf_msduq msduq[SAWF_MAX_QUEUES];
 };
 

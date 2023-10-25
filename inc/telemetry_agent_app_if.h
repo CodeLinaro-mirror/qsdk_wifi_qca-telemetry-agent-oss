@@ -27,7 +27,8 @@
 #define MAX_PEERS 512
 #define MU_MAX_USERS 37
 #define MUMIMO_MAX_USERS 8
-
+#define SAWF_MAXQ_PTID 2
+#define SAWF_MAX_QUEUES (NUM_TIDS * SAWF_MAXQ_PTID)
 /*
    Buffer Format
    --------------------------------------------
@@ -198,6 +199,46 @@ struct telemetry_erp_buffer {
 	uint32_t end_magic_num;
 };
 
+struct admctrl_msduq_stats {
+    uint64_t tx_success_num;
+};
+
+struct admctrl_peer_stats {
+    uint8_t peer_link_mac[6];
+    uint8_t peer_mld_mac[6];
+    uint8_t is_assoc_link;
+    uint8_t tx_airtime_consumption[WLAN_AC_MAX];
+    uint64_t tx_success_num;
+    uint64_t mld_tx_success_num;
+    uint64_t avg_tx_rate;
+    struct admctrl_msduq_stats msduq_stats[SAWF_MAX_QUEUES];
+};
+
+struct admctrl_link_stats {
+    uint16_t hw_link_id;
+    uint8_t freetime;
+    uint8_t tx_link_airtime[WLAN_AC_MAX];
+    uint16_t num_peers;
+    struct admctrl_peer_stats peer_stats[MAX_PEERS];
+};
+
+struct admctrl_soc_stats {
+	uint8_t soc_id;
+	uint8_t num_links;
+	struct admctrl_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+struct admctrl_relyfs_stats {
+	uint8_t num_soc;
+	struct admctrl_soc_stats soc_stats[MAX_SOCS];
+};
+
+struct telemetry_admctrl_buffer {
+        struct telemetry_agent_header header;
+        struct admctrl_relyfs_stats relayfs_stats;
+        u_int32_t end_magic_num;
+};
+
 enum wlan_vendor_channel_width {
 	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
 	WLAN_VENDOR_CHAN_WIDTH_20MHZ = 1,
@@ -274,10 +315,24 @@ struct link_map_of_tids {
 	uint8_t tid_present[NUM_TIDS]; /* TID present on this link */
 };
 
+struct agent_msduq_info {
+	uint8_t is_used;
+	uint8_t svc_id;
+	uint8_t svc_type;
+	uint8_t svc_tid;
+	uint8_t svc_ac;
+	uint8_t priority;
+	uint32_t service_interval;
+	uint32_t burst_size;
+	uint32_t min_throughput;
+	uint32_t delay_bound;
+	uint32_t mark_metadata;
+};
 
 struct agent_peer_init_stats {
 	uint8_t mld_mac_addr[6];      /* peer MLD mac */
 	uint8_t link_mac_addr[6];     /* peer MLD link mac */
+	uint8_t is_assoc_link;
 	uint8_t vdev_id;              /* peer vdev id */
 	uint8_t ap_mld_addr[6];       /* AP MLD mac */
 	struct link_map_of_tids t2lm_info[MAX_T2LM_INFO]; /* T2LM mapping */
@@ -287,6 +342,7 @@ struct agent_peer_init_stats {
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
+	struct agent_msduq_info msduq_info[SAWF_MAX_QUEUES];
 };
 
 struct agent_link_init_stats {
@@ -324,6 +380,7 @@ enum rm_services {
 	RM_PMLO_SERVICE,
 	RM_DETSCHED_SERVICE,
 	RM_ERP_SERVICE,
+	RM_ADMCTRL_SERVICE,
 	RM_MAX_SERVICE,
 };
 

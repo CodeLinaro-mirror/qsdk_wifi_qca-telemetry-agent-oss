@@ -63,10 +63,25 @@ struct eht_peer_caps {
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 };
 
+struct agent_msduq_info_iface_obj {
+	uint8_t is_used;
+	uint8_t svc_id;
+	uint8_t svc_type;
+	uint8_t svc_tid;
+	uint8_t svc_ac;
+	uint8_t priority;
+	uint32_t service_interval;
+	uint32_t burst_size;
+	uint32_t min_throughput;
+	uint32_t delay_bound;
+	uint32_t mark_metadata;
+};
+
 struct agent_peer_iface_init_obj {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
 	uint8_t ap_mld_addr[6];
+	uint8_t is_assoc_link;
 	uint8_t vdev_id;
 	uint8_t bw;
 	uint16_t freq;
@@ -74,6 +89,7 @@ struct agent_peer_iface_init_obj {
 	struct eht_peer_caps caps;          /* Peer capabilities */
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
+	struct agent_msduq_info_iface_obj msduq_info[SAWF_MAX_QUEUES];
 };
 
 struct agent_pdev_iface_init_obj {
@@ -155,6 +171,27 @@ struct erp_link_iface_stats_obj {
 	uint64_t time_since_last_assoc;
 };
 
+struct admctrl_link_iface_stats_obj {
+    uint16_t link_id;
+    uint8_t freetime;
+    uint8_t tx_link_airtime[WLAN_AC_MAX];
+};
+
+struct admctrl_msduq_iface_stats_obj {
+    uint64_t tx_success_num;
+};
+
+struct admctrl_peer_iface_stats_obj {
+    uint8_t peer_link_mac[6];
+    uint8_t peer_mld_mac[6];
+    uint8_t is_assoc_link;
+    uint8_t tx_airtime_consumption[WLAN_AC_MAX];
+    uint64_t tx_success_num;
+    uint64_t mld_tx_success_num;
+    uint64_t avg_tx_rate;
+    struct admctrl_msduq_iface_stats_obj msduq_stats[SAWF_MAX_QUEUES];
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -178,6 +215,8 @@ struct telemetry_agent_ops {
     int (*agent_get_deter_pdev_stats) (void *obj, struct deter_link_iface_stats_obj *stats);
     int (*agent_get_deter_peer_stats) (void *obj, struct deter_peer_iface_stats_obj *stats);
     int (*agent_get_erp_pdev_stats) (void *obj, struct erp_link_iface_stats_obj *stats);
+    int (*agent_get_admctrl_pdev_stats) (void *obj, struct admctrl_link_iface_stats_obj *stats);
+    int (*agent_get_admctrl_peer_stats) (void *obj, struct admctrl_peer_iface_stats_obj *stats);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

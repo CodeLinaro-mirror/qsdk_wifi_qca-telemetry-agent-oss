@@ -31,6 +31,7 @@
 agent and APP */
 #define EMESH_MAX_SUB_BUFFERS 10
 #define DETER_MAX_SUB_BUFFERS 10
+#define ADMCTRL_MAX_SUB_BUFFERS 10
 #define MAX_SUB_BUFFERS 10
 #define STATS_FREQUECY  1000 /*in milli seconds */
 
@@ -128,6 +129,12 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_periodic_erp;
 	/* erp wifi sample timer */
 	uint16_t erp_wifi_sample_timer;
+	/* relay(fs) channel for admission control service */
+	struct rchan *rfs_channel_admctrl;
+	/* delayed work init for admission control service */
+	struct delayed_work stats_work_init_admctrl;
+	/* delayed work periodic for admission control stats */
+	struct delayed_work stats_work_periodic_admctrl;
 };
 
 struct telemetry_agent_object {
