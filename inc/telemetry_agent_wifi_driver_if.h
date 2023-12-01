@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,6 +17,7 @@
 #define __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__
 
 #include "telemetry_agent_app_if.h"
+
 struct agent_psoc_obj {
     void *psoc_back_pointer;
     spinlock_t psoc_lock;
@@ -208,5 +209,6 @@ struct telemetry_agent_ops {
                                  uint8_t param, bool set_clear, uint8_t tid);
 };
 
-void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data);
+void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data,
+                                                    uint8_t category);
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */
