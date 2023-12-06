@@ -72,6 +72,7 @@ struct agent_peer_iface_init_obj {
 	struct t2lm_of_tids t2lm_info[WLAN_VENDOR_T2LM_MAX_VALID_DIRECTION]; /* T2LM mapping */
 	struct eht_peer_caps caps;          /* Peer capabilities */
 	uint8_t ieee_link_id;
+	uint16_t disabled_link_bitmap;
 };
 
 struct agent_pdev_iface_init_obj {

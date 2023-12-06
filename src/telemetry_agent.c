@@ -276,6 +276,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
 
+
 		num_pdevs = psoc_db->num_pdevs;
 
 		for (j = 0; j< num_pdevs; j++) {
@@ -327,6 +328,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					rfs_peer_stats->vdev_id = peer_stats.vdev_id;
 					memcpy(&rfs_peer_stats->ap_mld_addr[0],
 						peer_stats.ap_mld_addr, 6);
+					rfs_peer_stats->disabled_link_bitmap = peer_stats.disabled_link_bitmap;
 
 					num_mlo_peers++;
 				}

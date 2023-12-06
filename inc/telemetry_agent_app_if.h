@@ -159,6 +159,7 @@ struct agent_peer_init_stats {
 	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint8_t ieee_link_id;
+	uint16_t disabled_link_bitmap;
 };
 
 struct agent_link_init_stats {
