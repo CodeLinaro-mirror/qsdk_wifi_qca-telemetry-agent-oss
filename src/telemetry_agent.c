@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -134,12 +134,14 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 	ta_print_debug("Agent > %s len: %d\n", __func__,
 			stats_buffer.header.payload_len);
 
-	num_socs = g_agent_obj.agent_db.num_socs;
-	stats_buffer.u.periodic_stats.num_soc = num_socs;
 
-	for (i = 0; i< num_socs; i++) {
+	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
-		rfs_soc_stats = &stats_buffer.u.periodic_stats.soc_stats[i];
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+		if (wifi_driver_get_psoc_stats(psoc_db->psoc_obj_ptr))
+			continue;
+#endif
+		rfs_soc_stats = &stats_buffer.u.periodic_stats.soc_stats[num_socs];
 
 		/* call wifi driver and prepare RelayFS Message */
 		rfs_soc_stats->soc_id = psoc_db->soc_id;
@@ -150,7 +152,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 		for (j = 0; j < num_pdevs; j++) {
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			wifi_driver_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
 			memcpy(rfs_link_stats->available_airtime,
@@ -178,8 +180,8 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
-				if ((peer_db) && !wifi_driver_get_peer_stats(peer_db->peer_obj_ptr, &peer_stats))
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+				if ((peer_db) && !wifi_driver_get_peer_stats(peer_db, &peer_stats))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -190,7 +192,7 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					memcpy(rfs_peer_stats->airtime_consumption,
 					       peer_stats.airtime_consumption,
 					       sizeof(rfs_peer_stats->airtime_consumption));
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 					if (!peer_stats.tx_mpdu_total)
 						rfs_peer_stats->m1_stats = 0;
 					else
@@ -210,12 +212,18 @@ void telemetry_agent_stats_work_periodic(struct work_struct *work)
 					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
 					num_mlo_peers++;
 				}
+
+				if (num_mlo_peers >= MAX_PEERS)
+					break;
+
 			} /* peer */
 			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
+		num_socs++;
 	} /* soc */
 
+	stats_buffer.u.periodic_stats.num_soc = num_socs;
 	stats_buffer.end_magic_num = 0xBEAFDEAD;
 	relay_write(g_agent_obj.rfs_channel, &stats_buffer,
 			sizeof(struct telemetry_buffer));
@@ -244,8 +252,8 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	struct list_head *node;
 
 
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
-	wlan_cfg80211_t2lm_app_reply_init_response();
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL);
 #endif
 
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;
@@ -253,17 +261,15 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	stats_buffer.header.stats_type = RFS_INIT_DATA;
 	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
 
-	num_socs = g_agent_obj.agent_db.num_socs;
-	stats_buffer.u.init_stats.num_soc = num_socs;
-
-	for (i = 0; i < num_socs; i++) {
+	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
-		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[i];
 
 		/* call wifi driver and prepare RelayFS Message */
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
-		wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats);
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+		if (wifi_driver_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats))
+			continue;
 #endif
+		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[num_socs];
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
@@ -273,7 +279,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		for (j = 0; j< num_pdevs; j++) {
 			pdev_db  = &psoc_db->pdev_db[j];
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			wifi_driver_get_pdev_info(pdev_db->pdev_obj_ptr, &pdev_stats);
 #endif
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
@@ -283,7 +289,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
-#ifdef WLAN_TELEMETRY_STATS_SUPPORT
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && !wifi_driver_get_peer_info(peer_db->peer_obj_ptr, &peer_stats))
 #endif
                 {
@@ -309,24 +315,29 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					rfs_peer_stats->chan_freq = peer_stats.freq;
 
 					memcpy(&rfs_peer_stats->tx_mcs_nss_map,
-							&peer_stats.caps.tx_mcs_nss_map,
-							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
+					       &peer_stats.caps.tx_mcs_nss_map,
+					       (sizeof(uint32_t) * WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX));
 
 					memcpy(&rfs_peer_stats->rx_mcs_nss_map,
-							&peer_stats.caps.rx_mcs_nss_map,
-							WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX);
+					       &peer_stats.caps.rx_mcs_nss_map,
+					       (sizeof(uint32_t) * WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX));
 					rfs_peer_stats->ieee_link_id = peer_stats.ieee_link_id;
 
 					num_mlo_peers++;
 				}
+
+				if (num_mlo_peers >= MAX_PEERS)
+					break;
 
 			} /* peer */
 
 			spin_unlock_bh(&pdev_db->peer_db_lock);
 			rfs_link_stats->num_peers = num_mlo_peers;
 		} /* pdev */
+		num_socs++;
 	} /* soc */
 
+	stats_buffer.u.init_stats.num_soc = num_socs;
 	stats_buffer.end_magic_num = 0xBEAFDEAD;
 	relay_write(g_agent_obj.rfs_channel, &stats_buffer,
 			sizeof(struct telemetry_buffer));
@@ -633,14 +644,15 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 				continue;
 			}
 
-			if(MAC_ADDR_EQ(&peer_obj->peer_mac_addr[0], &peer_db->peer_mac_addr[0])) {
+			if (peer_obj->peer_back_pointer ==
+			    peer_db->peer_obj_ptr) {
 				node_remove = node;
 				peer_db_remove = peer_db;
 				break;
 			}
 		}
 
-	if(node_remove && peer_db_remove) {
+	if (node_remove && peer_db_remove) {
 		list_del(node);
 		kfree(peer_db_remove);
 	} else {
