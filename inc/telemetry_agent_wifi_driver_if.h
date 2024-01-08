@@ -206,7 +206,8 @@ struct telemetry_agent_ops {
                                  uint64_t *drop, uint64_t *drop_ttl,
                                  uint8_t tid, uint8_t msduq);
     void (* sawf_notify_breach) (uint8_t *mac_addr, uint8_t svc_id,
-                                 uint8_t param, bool set_clear, uint8_t tid);
+                                 uint8_t param, bool set_clear, uint8_t tid,
+                                 uint8_t queue_id);
 };
 
 void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data,
