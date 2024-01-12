@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,7 @@
 
 #include "../inc/telemetry_agent.h"
 #include "../inc/telemetry_agent_sawf.h"
+#include "../inc/telemetry_agent_wifi_driver_if.h"
 
 struct telemetry_agent_object g_agent_obj; 
 struct telemetry_buffer stats_buffer;
@@ -253,9 +254,8 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 	struct agent_peer_init_stats *rfs_peer_stats = NULL;
 	struct list_head *node;
 
-
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
-	wlan_cfg80211_t2lm_app_reply_generic_response(NULL);
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1);
 #endif
 
 	stats_buffer.header.start_magic_num = 0xDEADBEAF;
@@ -275,6 +275,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
+
 
 		num_pdevs = psoc_db->num_pdevs;
 
@@ -327,6 +328,7 @@ void telemetry_agent_stats_work_init(struct work_struct *work)
 					rfs_peer_stats->vdev_id = peer_stats.vdev_id;
 					memcpy(&rfs_peer_stats->ap_mld_addr[0],
 						peer_stats.ap_mld_addr, 6);
+					rfs_peer_stats->disabled_link_bitmap = peer_stats.disabled_link_bitmap;
 
 					num_mlo_peers++;
 				}
