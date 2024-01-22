@@ -134,7 +134,7 @@ struct telemetry_agent_ops {
     int  (*agent_peer_destroy_handler) (void *arg, struct agent_peer_obj *peer_obj);
     int  (*agent_set_param) (int command, int value);
     int  (*agent_get_param) (int command);
-    void (*agent_notify_app_event) (enum agent_notification_event);
+    void (*agent_notify_app_event) (enum agent_notification_event, uint64_t data);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
@@ -210,5 +210,6 @@ struct telemetry_agent_ops {
 };
 
 void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data,
-                                                    uint8_t category);
+                                                    uint8_t category,
+                                                    uint8_t service_id);
 #endif /* __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__ */

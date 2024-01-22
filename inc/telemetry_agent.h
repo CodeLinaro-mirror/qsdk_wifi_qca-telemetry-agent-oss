@@ -100,25 +100,34 @@ struct agent_telemtry_db {
 	struct agent_soc_db psoc_db[MAX_SOCS_DB];
 };
 
+struct agent_rm_telemetry {
+	bool app_init[RM_MAX_SERVICE];
+	/* relay(fs) channel for main service */
+	struct rchan *rfs_channel_main;
+	/* delyed work for main service */
+	struct delayed_work stats_work_init_main;
+	/* relay(fs) channel for pmlo service */
+	struct rchan *rfs_channel_pmlo;
+	/* delyed work for pmlo service */
+	struct delayed_work stats_work_init_pmlo;
+	/* delyed work periodic for pmlo service*/
+	struct delayed_work stats_work_periodic_pmlo;
+};
+
 struct telemetry_agent_object {
 	/* RelayFS */
 	uint32_t num_subbufs;
 	uint32_t subbuf_size;
-	/* relay(fs) channel */
-	struct rchan *rfs_channel;
 	/* relay(fs) telemetry channel */
 	struct rchan *rfs_emesh_channel;
 	struct dentry *dir_ptr;
 	struct dentry *dir_emesh_ptr;
-	/* delyed work */
-	struct delayed_work stats_work_init;
-	/* delyed work periodic*/
-	struct delayed_work stats_work_periodic;
 	/* delayed telemetry work periodic*/
 	struct delayed_work emesh_stats_work_periodic;
 	/* pdev and peer objects */
 	struct agent_telemtry_db agent_db;
 	uint32_t debug_mask;
+	struct agent_rm_telemetry rm_telemetry;
 };
 
 

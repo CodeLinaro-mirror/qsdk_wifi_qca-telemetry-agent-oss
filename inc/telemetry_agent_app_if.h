@@ -192,4 +192,10 @@ struct telemetry_buffer {
 	u_int32_t   end_magic_num;
 };
 
+enum rm_services {
+	RM_MAIN_SERVICE = 0,
+	RM_PMLO_SERVICE,
+	RM_MAX_SERVICE,
+};
+
 #endif /* __TELEMETRY_AGENT_APP_IF_H__ */
