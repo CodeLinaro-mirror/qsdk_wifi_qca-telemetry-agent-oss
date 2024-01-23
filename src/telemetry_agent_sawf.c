@@ -78,8 +78,10 @@ int telemetry_sawf_set_sla_detect_cfg(uint8_t type,
 		return -1;
 	}
 
+	/* The type field denotes the type of SLA detect */
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[type];
 
+	/* Update the fields for which SLA detection is enabled */
 	sla_detect->min_thruput_rate = min_thruput_rate;
 	sla_detect->max_thruput_rate = max_thruput_rate;
 	sla_detect->burst_size = burst_size;
@@ -452,7 +454,6 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 	struct telemetry_sawf_svc_class_param *svc_param;
 	struct telemetry_sawf_sla_param *sla_param;
 	struct telemetry_sawf_sla_param *sla_detect;
-	uint64_t total;
 	uint32_t threshold, pass_p;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
@@ -466,8 +467,7 @@ telemetry_detect_breach_peer_delay_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 	threshold = sla_param->delay_bound;
 	if (threshold && sla_detect->delay_bound) {
-		total = pass + fail;
-		pass_p = div_u64((total - fail * 100), (pass + fail));
+		pass_p = div_u64((pass * 100), (pass + fail));
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA Delay Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
@@ -511,7 +511,7 @@ telemetry_detect_breach_peer_drop_num_pkt(struct telemetry_sawf_peer_ctx *peer,
 
 	threshold = sla_param->msdu_ttl;
 	if (threshold && sla_detect->msdu_ttl) {
-		pass_p = div_u64((total - drop_ttl * 100), total);
+		pass_p = div_u64(((total - drop_ttl) * 100), total);
 		if (pass_p < threshold) {
 			pr_sawf_err("SLA MSDU TTL Loss Breach(num_pkt) Detected peer service ID: %d",
 				    svc_id);
@@ -647,7 +647,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
 			pr_sawf_err("Configured Min Throughput: %d", throughput);
-			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
+			pr_sawf_err("Ingress Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,
 						queue, true,
@@ -1038,6 +1038,10 @@ int telemetry_sawf_update_msdu_drop(void *telemetry_ctx,
 	curr_total = total - msdu_drop->last_xmit_cnt_packets;
 	curr_fail = fail_drop - msdu_drop->last_drop_cnt_packets;
 	curr_fail_ttl = fail_ttl - msdu_drop->last_ttl_drop_cnt_packets;
+
+	msdu_drop->last_xmit_cnt_packets = total;
+	msdu_drop->last_drop_cnt_packets = fail_drop;
+	msdu_drop->last_ttl_drop_cnt_packets = fail_ttl;
 
 	msduq = &peer_ctx->peer_msduq.msduq[queue];
 	telemetry_detect_breach_peer_drop_num_pkt(peer_ctx, msduq->svc_id,
