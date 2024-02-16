@@ -517,6 +517,7 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rm_telemetry.rfs_channel_pmlo) {
+		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
@@ -525,6 +526,7 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 	agent_obj->dir_emesh_ptr = debugfs_create_dir("qca_emesh_stats", NULL);
 	if (agent_obj->dir_emesh_ptr == NULL){
 		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
+		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
@@ -539,6 +541,7 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 		debugfs_remove_recursive(agent_obj->dir_emesh_ptr);
 		agent_obj->dir_emesh_ptr = NULL;
 		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
+		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
