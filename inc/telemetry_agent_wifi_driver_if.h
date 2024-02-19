@@ -146,6 +146,15 @@ struct deter_link_iface_stats_obj {
     struct deter_link_ul_trigger_status ts[TX_UL_MAX];
 };
 
+struct erp_link_iface_stats_obj {
+	uint64_t tx_data_mpdu_cnt;
+	uint64_t rx_data_mpdu_cnt;
+	uint32_t tx_max_avg_data_rate;
+	uint32_t rx_max_avg_data_rate;
+	bool sta_vap_exist;
+	uint64_t time_since_last_assoc;
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -155,7 +164,8 @@ struct telemetry_agent_ops {
     int  (*agent_peer_destroy_handler) (void *arg, struct agent_peer_obj *peer_obj);
     int  (*agent_set_param) (int command, int value);
     int  (*agent_get_param) (int command);
-    void (*agent_notify_app_event) (enum agent_notification_event, uint64_t data);
+    void (*agent_notify_app_event) (enum agent_notification_event, enum rm_services service_id,
+                                    uint8_t *service_data);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
@@ -167,6 +177,7 @@ struct telemetry_agent_ops {
     int (*agent_get_emesh_peer_stats) (void *obj, struct emesh_peer_iface_stats_obj *stats);
     int (*agent_get_deter_pdev_stats) (void *obj, struct deter_link_iface_stats_obj *stats);
     int (*agent_get_deter_peer_stats) (void *obj, struct deter_peer_iface_stats_obj *stats);
+    int (*agent_get_erp_pdev_stats) (void *obj, struct erp_link_iface_stats_obj *stats);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

@@ -120,6 +120,14 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_init_deter;
 	/* delayed telemetry deterministic stats work periodic*/
 	struct delayed_work stats_work_periodic_deter;
+	/* relay(fs) channel for erp service */
+	struct rchan *rfs_channel_erp;
+	/* delyed work for erp service */
+	struct delayed_work stats_work_init_erp;
+	/* delyed work periodic for erp service*/
+	struct delayed_work stats_work_periodic_erp;
+	/* erp wifi sample timer */
+	uint16_t erp_wifi_sample_timer;
 };
 
 struct telemetry_agent_object {

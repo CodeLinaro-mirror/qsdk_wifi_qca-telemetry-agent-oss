@@ -172,6 +172,32 @@ struct telemetry_deter_buffer {
         u_int32_t   end_magic_num;
 };
 
+struct erp_link_stats {
+	uint8_t link_mac[6];
+	uint64_t tx_data_mpdu_cnt;
+	uint64_t rx_data_mpdu_cnt;
+	uint32_t tx_max_avg_data_rate;
+	uint32_t rx_max_avg_data_rate;
+	bool sta_vap_exist;
+	uint64_t time_since_last_assoc;
+};
+
+struct erp_soc_stats {
+	int num_links;
+	struct erp_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+struct erp_relayfs_stats {
+	int num_soc;
+	struct erp_soc_stats soc_stats[MAX_SOCS];
+};
+
+struct telemetry_erp_buffer {
+	struct telemetry_agent_header header;
+	struct erp_relayfs_stats relayfs_stats;
+	uint32_t end_magic_num;
+};
+
 enum wlan_vendor_channel_width {
 	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
 	WLAN_VENDOR_CHAN_WIDTH_20MHZ = 1,
@@ -297,6 +323,7 @@ enum rm_services {
 	RM_MAIN_SERVICE = 0,
 	RM_PMLO_SERVICE,
 	RM_DETSCHED_SERVICE,
+	RM_ERP_SERVICE,
 	RM_MAX_SERVICE,
 };
 
