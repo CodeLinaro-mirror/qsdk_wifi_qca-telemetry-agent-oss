@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -446,7 +446,7 @@ static int telemetry_notify_breach(struct telemetry_sawf_peer_ctx *peer,
 		msduq = &peer->peer_msduq.msduq[queue];
 		tid = msduq->tid;
 		g_agent_ops->sawf_notify_breach(peer->mac_addr, svc_id, param,
-						set_clear, tid);
+						set_clear, tid, queue);
 
 		stats->breach[param] = set_clear;
 	}
