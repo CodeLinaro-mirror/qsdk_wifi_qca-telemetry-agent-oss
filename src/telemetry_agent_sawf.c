@@ -145,6 +145,8 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 		memset(svc_class, 0,
 		       sizeof(struct telemetry_sawf_svc_class_param));
 		clear_bit(svc_id, sawf_ctx->svc_class.service_ids);
+		/* Clear SLA config also */
+		set_bit(svc_id, sawf_ctx->sla.sla_service_ids);
 	}
 	return 0;
 }
@@ -361,6 +363,36 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx, uint8_t host_q_id,
 		     peer_msduq->msduq[host_q_id].htt_msduq,
 		     peer_msduq->msduq[host_q_id].tid = tid,
 		     peer_msduq->msduq_map[tid][msduq]);
+
+	return 0;
+}
+
+int telemetry_sawf_update_msdu_queue_info(void *telemetry_ctx,
+					  uint8_t host_q_id,
+					  uint8_t tid, uint8_t msduq,
+					  uint8_t svc_id)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx;
+	struct peer_sawf_queue *peer_msduq;
+
+	if (!telemetry_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
+	peer_ctx = telemetry_ctx;
+	peer_msduq = &(peer_ctx->peer_msduq);
+
+	peer_msduq->msduq[host_q_id].htt_msduq = msduq;
+	peer_msduq->msduq[host_q_id].tid = tid;
+	peer_msduq->msduq[host_q_id].svc_id = svc_id;
+	peer_msduq->msduq_map[tid][msduq] = host_q_id;
+
+	set_bit(host_q_id, peer_msduq->active_queue);
+	pr_sawf_info("Host Q Idx: %d | TID: %d | Queue ID: %d| Svc ID: %d|",
+		     peer_msduq->msduq[host_q_id].htt_msduq,
+		     peer_msduq->msduq[host_q_id].tid,
+		     peer_msduq->msduq_map[tid][msduq],
+		     peer_msduq->msduq[host_q_id].svc_id);
 
 	return 0;
 }
