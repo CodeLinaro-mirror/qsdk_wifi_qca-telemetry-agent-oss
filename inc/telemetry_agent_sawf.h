@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -476,6 +476,19 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx,
 				     uint8_t svc_id, uint8_t tid,
 				     uint8_t msduq);
 
+/**
+ * telemetry_sawf_update_msdu_queue_info- Update msdu-queue info
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @hostq_id: host queue id
+ * @tid: tid no
+ * @msduq: msdu-queue no
+ * @svc-id: service-class id
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_update_msdu_queue_info(void *telemetry_ctx,
+					  uint8_t hostq_id, uint8_t tid,
+					  uint8_t msduq, uint8_t svc_id);
 /**
  * telemetry_sawf_free_peer - Free telemetry-peer context
  * @telemetry_peer_ctx: telemetry-peer context

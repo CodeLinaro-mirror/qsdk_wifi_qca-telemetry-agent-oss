@@ -153,6 +153,9 @@ struct telemetry_agent_ops {
     int (* sawf_updt_queue_info) (void *telemetry_sawf_ctx,
                                   uint8_t svc_id,
                                   uint8_t tid, uint8_t msduq_idx);
+    int (* sawf_update_msduq_info) (void *telemetry_sawf_ctx,
+                                    uint8_t hostq_id, uint8_t tid,
+                                    uint8_t msduq_idx, uint8_t svc_id);
     int (* sawf_updt_delay_mvng) (uint32_t num_win, uint32_t num_pkt);
     int (* sawf_updt_sla_params) (uint32_t num_pkt, uint32_t time_sec);
     int (* sawf_set_sla_cfg) (uint8_t svc_id, uint8_t min_thruput_rate,
