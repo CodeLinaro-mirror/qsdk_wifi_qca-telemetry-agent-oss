@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,8 @@
 #define MAX_T2LM_INFO 2
 #define WLAN_AC_MAX 4
 #define MAX_PEERS 512
+#define MU_MAX_USERS 37
+#define MUMIMO_MAX_USERS 8
 
 /*
    Buffer Format
@@ -58,6 +60,99 @@ struct emesh_relyfs_stats {
     struct emesh_soc_stats soc_stats[MAX_SOCS];
 };
 
+enum tx_mode_dl {
+    TX_DL_SU_DATA = 0,
+    TX_DL_OFDMA_DATA,
+    TX_DL_MUMIMO_DATA,
+    TX_DL_MAX,
+};
+
+enum tx_mode_ul {
+    TX_UL_OFDMA_BASIC_TRIGGER_DATA = 0,
+    TX_UL_MUMIMO_BASIC_TRIGGER_DATA,
+    TX_UL_OFDMA_MU_BAR_TRIGGER,
+    TX_UL_MAX,
+};
+
+enum msduq_index {
+    MSDUQ_DEFAULT = 0,
+    MSDUQ_CUSTOM_PRIO_0,
+    MSDUQ_CUSTOM_PRIO_1,
+    MSDUQ_CUSTOM_EXT_PRIO_0,
+    MSDUQ_CUSTOM_EXT_PRIO_1,
+    MSDUQ_CUSTOM_EXT_PRIO_2,
+    MSDUQ_CUSTOM_EXT_PRIO_3,
+    MSDUQ_MAX,
+};
+
+struct deter_peer_tx_dl {
+    uint64_t avg_rate;
+    uint32_t mode_cnt;
+};
+
+struct deter_peer_tx_ul {
+    uint64_t avg_rate;
+    uint32_t mode_cnt;
+    uint32_t trigger_success;
+    uint32_t trigger_fail;
+};
+
+struct deter_peer_rx {
+    uint64_t avg_rate;
+    uint32_t mode_cnt;
+};
+
+struct deter_peer_iface_stats {
+    struct deter_peer_tx_dl dl_det[MSDUQ_MAX][TX_DL_MAX];
+    struct deter_peer_tx_ul ul_det[TX_UL_MAX];
+    struct deter_peer_rx rx_det;
+};
+
+struct deter_peer_stats {
+    uint8_t peer_link_mac[6];
+    uint8_t vdev_id;
+    struct deter_peer_iface_stats deter[NUM_TIDS];
+};
+
+struct deter_link_chan_util_stats {
+    uint8_t chan_util;
+    uint8_t tx_util;
+    uint8_t rx_util;
+};
+
+struct deter_link_ul_trigger_status {
+    uint64_t trigger_success;
+    uint64_t trigger_fail;
+};
+
+struct deter_link_stats {
+    uint8_t link_mac[6];
+    uint8_t hw_link_id;
+    uint32_t num_peers;
+    uint64_t dl_ofdma_usr[MU_MAX_USERS];
+    uint64_t ul_ofdma_usr[MU_MAX_USERS];
+    uint64_t dl_mimo_usr[MUMIMO_MAX_USERS];
+    uint64_t ul_mimo_usr[MUMIMO_MAX_USERS];
+    uint64_t dl_mode_cnt[TX_DL_MAX];
+    uint64_t ul_mode_cnt[TX_UL_MAX];
+    uint64_t rx_su_cnt;
+    uint32_t ch_access_delay[WLAN_AC_MAX];
+    struct deter_link_chan_util_stats ch_util;
+    struct deter_link_ul_trigger_status ts[TX_UL_MAX];
+    struct deter_peer_stats peer_stats[MAX_PEERS];
+};
+
+struct deter_soc_stats {
+    uint8_t num_links;
+    uint8_t soc_id;
+    struct deter_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+struct deter_periodic_stats {
+    uint8_t num_soc;
+    struct deter_soc_stats soc_stats;
+};
+
 struct telemetry_agent_header {
 	u_int32_t   start_magic_num;
 	u_int32_t   stats_version;
@@ -68,6 +163,12 @@ struct telemetry_agent_header {
 struct telemetry_emesh_buffer {
         struct telemetry_agent_header header;
         struct emesh_relyfs_stats relayfs_stats;
+        u_int32_t   end_magic_num;
+};
+
+struct telemetry_deter_buffer {
+        struct telemetry_agent_header header;
+        struct deter_periodic_stats relayfs_stats;
         u_int32_t   end_magic_num;
 };
 
@@ -195,6 +296,7 @@ struct telemetry_buffer {
 enum rm_services {
 	RM_MAIN_SERVICE = 0,
 	RM_PMLO_SERVICE,
+	RM_DETSCHED_SERVICE,
 	RM_MAX_SERVICE,
 };
 
