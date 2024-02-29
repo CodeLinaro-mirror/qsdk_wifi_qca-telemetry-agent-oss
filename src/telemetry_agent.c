@@ -1072,6 +1072,7 @@ static void telemetry_agent_exit_module(void)
 	unregister_telemetry_agent_ops(&agent_ops);
 	memset(&g_agent_obj, 0, sizeof(struct telemetry_agent_object));
 	kfree(emesh_stats_buffer);
+	kfree(deter_stats_buffer);
 	kfree(erp_stats_buffer);
 	telemetry_sawf_free_ctx();
 	return;
