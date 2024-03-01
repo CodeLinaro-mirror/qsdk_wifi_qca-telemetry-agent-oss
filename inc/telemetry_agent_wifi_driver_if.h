@@ -165,8 +165,8 @@ struct deter_link_iface_stats_obj {
 struct erp_link_iface_stats_obj {
 	uint64_t tx_data_mpdu_cnt;
 	uint64_t rx_data_mpdu_cnt;
-	uint32_t tx_max_avg_data_rate;
-	uint32_t rx_max_avg_data_rate;
+	uint64_t total_tx_data_bytes;
+	uint64_t total_rx_data_bytes;
 	bool sta_vap_exist;
 	uint64_t time_since_last_assoc;
 };

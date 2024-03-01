@@ -128,7 +128,7 @@ struct agent_rm_telemetry {
 	/* delyed work periodic for erp service*/
 	struct delayed_work stats_work_periodic_erp;
 	/* erp wifi sample timer */
-	uint16_t erp_wifi_sample_timer;
+	uint64_t erp_wifi_sample_timer;
 	/* relay(fs) channel for admission control service */
 	struct rchan *rfs_channel_admctrl;
 	/* delayed work init for admission control service */

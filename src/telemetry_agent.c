@@ -234,8 +234,8 @@ void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
 			g_agent_ops->agent_get_erp_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->tx_data_mpdu_cnt = pdev_stats.tx_data_mpdu_cnt;
 			rfs_link_stats->rx_data_mpdu_cnt = pdev_stats.rx_data_mpdu_cnt;
-			rfs_link_stats->tx_max_avg_data_rate = pdev_stats.tx_max_avg_data_rate;
-			rfs_link_stats->rx_max_avg_data_rate = pdev_stats.rx_max_avg_data_rate;
+			rfs_link_stats->total_tx_data_bytes = pdev_stats.total_tx_data_bytes;
+			rfs_link_stats->total_rx_data_bytes = pdev_stats.total_rx_data_bytes;
 			rfs_link_stats->sta_vap_exist = pdev_stats.sta_vap_exist;
 			rfs_link_stats->time_since_last_assoc = pdev_stats.time_since_last_assoc;
 #endif
@@ -249,7 +249,8 @@ void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
 			sizeof(struct telemetry_erp_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_erp);
 
-	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp, msecs_to_jiffies(STATS_FREQUECY));
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
+				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
 	return;
 }
 
@@ -515,6 +516,14 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	/*  Schedule work for Admission Control periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_ADMCTRL_SERVICE])
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, msecs_to_jiffies(STATS_FREQUECY));
+
+	/*  Schedule work for ERP periodic relayfs stats if service is enabled and sample timer is non-zero,
+	 *  Sample timer will be zero in case ERP service is disabled and lib alone is enabled
+	 */
+	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
+			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
+				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
 }
 
 void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)

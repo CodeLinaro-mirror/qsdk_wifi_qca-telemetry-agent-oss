@@ -174,11 +174,10 @@ struct telemetry_deter_buffer {
 };
 
 struct erp_link_stats {
-	uint8_t link_mac[6];
 	uint64_t tx_data_mpdu_cnt;
 	uint64_t rx_data_mpdu_cnt;
-	uint32_t tx_max_avg_data_rate;
-	uint32_t rx_max_avg_data_rate;
+	uint64_t total_tx_data_bytes;
+	uint64_t total_rx_data_bytes;
 	bool sta_vap_exist;
 	uint64_t time_since_last_assoc;
 };
@@ -378,8 +377,8 @@ struct telemetry_buffer {
 enum rm_services {
 	RM_MAIN_SERVICE = 0,
 	RM_PMLO_SERVICE,
-	RM_DETSCHED_SERVICE,
 	RM_ERP_SERVICE,
+	RM_DETSCHED_SERVICE,
 	RM_ADMCTRL_SERVICE,
 	RM_MAX_SERVICE,
 };
