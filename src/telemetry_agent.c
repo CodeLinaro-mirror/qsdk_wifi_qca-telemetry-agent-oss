@@ -694,19 +694,14 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 	return;
 }
 
-static void telemetry_agent_rm_get_service_data(enum rm_services service_id, uint8_t *service_data)
+static void telemetry_agent_rm_get_service_data(enum rm_services service_id, uint64_t service_data)
 {
-	if (service_data == NULL) {
-		ta_print_debug("%s: service data is null for service %d", __func__, service_id);
-		return;
-	}
-
 	if (service_id == RM_ERP_SERVICE)
-		memcpy(&g_agent_obj.rm_telemetry.erp_wifi_sample_timer, service_data, sizeof(uint16_t));
+		g_agent_obj.rm_telemetry.erp_wifi_sample_timer = service_data;
 }
 
 void telemetry_agent_notify_app_init(enum agent_notification_event event, enum rm_services service_id,
-				     uint8_t *service_data)
+				     uint64_t service_data)
 {
 	struct rchan *rfs_channel;
 	struct delayed_work *work_init;

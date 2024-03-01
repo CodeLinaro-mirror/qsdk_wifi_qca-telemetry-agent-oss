@@ -202,7 +202,7 @@ struct telemetry_agent_ops {
     int  (*agent_set_param) (int command, int value);
     int  (*agent_get_param) (int command);
     void (*agent_notify_app_event) (enum agent_notification_event, enum rm_services service_id,
-                                    uint8_t *service_data);
+                                    uint64_t service_data);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
