@@ -29,10 +29,10 @@
 #define STATUS_FAIL -1
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
-#define EMESH_MAX_SUB_BUFFERS 10
-#define DETER_MAX_SUB_BUFFERS 10
-#define ADMCTRL_MAX_SUB_BUFFERS 10
-#define MAX_SUB_BUFFERS 10
+#define EMESH_MAX_SUB_BUFFERS 2
+#define DETER_MAX_SUB_BUFFERS 5
+#define ADMCTRL_MAX_SUB_BUFFERS 2
+#define MAX_SUB_BUFFERS 2
 #define STATS_FREQUECY  1000 /*in milli seconds */
 
 #define MAX_PDEV_LINKS_DB 3
