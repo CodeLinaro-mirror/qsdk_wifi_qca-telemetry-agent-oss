@@ -19,7 +19,7 @@
 #include "../inc/telemetry_agent_wifi_driver_if.h"
 
 struct telemetry_agent_object g_agent_obj;
-struct telemetry_buffer stats_buffer;
+struct telemetry_buffer *stats_buffer;
 struct telemetry_emesh_buffer *emesh_stats_buffer;
 struct telemetry_deter_buffer *deter_stats_buffer;
 struct telemetry_erp_buffer *erp_stats_buffer;
@@ -271,14 +271,14 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 	struct agent_peer_stats *rfs_peer_stats = NULL;
 	struct list_head *node;
 
-	memset(&stats_buffer, 0, sizeof(struct telemetry_buffer));
-	stats_buffer.header.start_magic_num = 0xDEADBEAF;
-	stats_buffer.header.stats_version = 1;
-	stats_buffer.header.stats_type = RFS_STATS_DATA;
-	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
+	memset(stats_buffer, 0, sizeof(struct telemetry_buffer));
+	stats_buffer->header.start_magic_num = 0xDEADBEAF;
+	stats_buffer->header.stats_version = 1;
+	stats_buffer->header.stats_type = RFS_STATS_DATA;
+	stats_buffer->header.payload_len = sizeof(struct telemetry_buffer);
 
 	ta_print_debug("Agent > %s len: %d\n", __func__,
-			stats_buffer.header.payload_len);
+			stats_buffer->header.payload_len);
 
 
 	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
@@ -287,7 +287,7 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 		if (g_agent_ops->agent_get_psoc_stats(psoc_db->psoc_obj_ptr))
 			continue;
 #endif
-		rfs_soc_stats = &stats_buffer.u.periodic_stats.soc_stats[num_socs];
+		rfs_soc_stats = &stats_buffer->u.periodic_stats.soc_stats[num_socs];
 
 		/* call wifi driver and prepare RelayFS Message */
 		rfs_soc_stats->soc_id = psoc_db->soc_id;
@@ -370,9 +370,9 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 		num_socs++;
 	} /* soc */
 
-	stats_buffer.u.periodic_stats.num_soc = num_socs;
-	stats_buffer.end_magic_num = 0xBEAFDEAD;
-	relay_write(g_agent_obj.rm_telemetry.rfs_channel_pmlo, &stats_buffer,
+	stats_buffer->u.periodic_stats.num_soc = num_socs;
+	stats_buffer->end_magic_num = 0xBEAFDEAD;
+	relay_write(g_agent_obj.rm_telemetry.rfs_channel_pmlo, stats_buffer,
 			sizeof(struct telemetry_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_pmlo);
 
@@ -402,10 +402,10 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_MAIN_SERVICE);
 #endif
-	stats_buffer.header.start_magic_num = 0xDEADBEAF;
-	stats_buffer.header.stats_version = 1;
-	stats_buffer.header.stats_type = RFS_INIT_DATA;
-	stats_buffer.header.payload_len = sizeof(struct telemetry_buffer);
+	stats_buffer->header.start_magic_num = 0xDEADBEAF;
+	stats_buffer->header.stats_version = 1;
+	stats_buffer->header.stats_type = RFS_INIT_DATA;
+	stats_buffer->header.payload_len = sizeof(struct telemetry_buffer);
 
 	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
@@ -415,7 +415,7 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 		if (g_agent_ops->agent_get_psoc_info(psoc_db->psoc_obj_ptr, &soc_stats))
 			continue;
 #endif
-		rfs_soc_stats = &stats_buffer.u.init_stats.soc_stats[num_socs];
+		rfs_soc_stats = &stats_buffer->u.init_stats.soc_stats[num_socs];
 		rfs_soc_stats->soc_id = soc_stats.soc_id;
 		rfs_soc_stats->num_peers = soc_stats.num_peers;
 		rfs_soc_stats->num_links = psoc_db->num_pdevs;
@@ -505,9 +505,9 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 		num_socs++;
 	} /* soc */
 
-	stats_buffer.u.init_stats.num_soc = num_socs;
-	stats_buffer.end_magic_num = 0xBEAFDEAD;
-	relay_write(g_agent_obj.rm_telemetry.rfs_channel_main, &stats_buffer,
+	stats_buffer->u.init_stats.num_soc = num_socs;
+	stats_buffer->end_magic_num = 0xBEAFDEAD;
+	relay_write(g_agent_obj.rm_telemetry.rfs_channel_main, stats_buffer,
 			sizeof(struct telemetry_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_main);
 
@@ -1177,6 +1177,13 @@ static int telemetry_agent_init_module(void)
 {
 	int status = 0;
 
+	stats_buffer = kzalloc(sizeof(struct telemetry_buffer),GFP_ATOMIC);
+	if (!stats_buffer)
+	{
+		ta_print_error("pmlo stats buffer alloc failed");
+		return -EPERM;
+	}
+
 	emesh_stats_buffer = kzalloc(sizeof(struct telemetry_emesh_buffer),GFP_ATOMIC);
 	if (!emesh_stats_buffer)
 	{
@@ -1238,6 +1245,7 @@ static void telemetry_agent_exit_module(void)
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
 	unregister_telemetry_agent_ops(&agent_ops);
 	memset(&g_agent_obj, 0, sizeof(struct telemetry_agent_object));
+	kfree(stats_buffer);
 	kfree(emesh_stats_buffer);
 	kfree(deter_stats_buffer);
 	kfree(erp_stats_buffer);
