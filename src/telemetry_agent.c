@@ -524,6 +524,10 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
 				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
+
+	/*  Schedule work for Deterministic scheduler periodic relayfs stats if service is enabled */
+	if (g_agent_obj.rm_telemetry.app_init[RM_DETSCHED_SERVICE])
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUECY));
 }
 
 void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
