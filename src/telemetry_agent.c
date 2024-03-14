@@ -265,8 +265,8 @@ void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
 			rfs_link_stats = &rfs_soc_stats->link_stats[j];
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			g_agent_ops->agent_get_erp_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
-			rfs_link_stats->tx_data_mpdu_cnt = pdev_stats.tx_data_mpdu_cnt;
-			rfs_link_stats->rx_data_mpdu_cnt = pdev_stats.rx_data_mpdu_cnt;
+			rfs_link_stats->tx_data_msdu_cnt = pdev_stats.tx_data_msdu_cnt;
+			rfs_link_stats->rx_data_msdu_cnt = pdev_stats.rx_data_msdu_cnt;
 			rfs_link_stats->total_tx_data_bytes = pdev_stats.total_tx_data_bytes;
 			rfs_link_stats->total_rx_data_bytes = pdev_stats.total_rx_data_bytes;
 			rfs_link_stats->sta_vap_exist = pdev_stats.sta_vap_exist;

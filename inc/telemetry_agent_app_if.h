@@ -174,21 +174,21 @@ struct telemetry_deter_buffer {
 };
 
 struct erp_link_stats {
-	uint64_t tx_data_mpdu_cnt;
-	uint64_t rx_data_mpdu_cnt;
+	uint64_t tx_data_msdu_cnt;
+	uint64_t rx_data_msdu_cnt;
 	uint64_t total_tx_data_bytes;
 	uint64_t total_rx_data_bytes;
-	bool sta_vap_exist;
+	uint8_t sta_vap_exist;
 	uint64_t time_since_last_assoc;
 };
 
 struct erp_soc_stats {
-	int num_links;
+	uint8_t num_links;
 	struct erp_link_stats link_stats[MAX_PDEV_LINKS];
 };
 
 struct erp_relayfs_stats {
-	int num_soc;
+	uint8_t num_soc;
 	struct erp_soc_stats soc_stats[MAX_SOCS];
 };
 
