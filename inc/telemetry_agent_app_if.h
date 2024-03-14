@@ -385,15 +385,16 @@ struct relayfs_init_stats {
 	struct agent_soc_init_stats soc_stats[MAX_SOCS];
 };
 
-
-struct telemetry_buffer {
+struct telemetry_pmlo_buffer {
 	struct telemetry_agent_header header;
-	union {
-		struct relayfs_stats periodic_stats;
-		struct relayfs_init_stats init_stats;
-	} u;
+	struct relayfs_stats periodic_stats;
+	u_int32_t end_magic_num;
+};
 
-	u_int32_t   end_magic_num;
+struct telemetry_rm_main_buffer {
+	struct telemetry_agent_header header;
+	struct relayfs_init_stats init_stats;
+	u_int32_t end_magic_num;
 };
 
 enum rm_services {
