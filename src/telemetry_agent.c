@@ -98,8 +98,41 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 			       pdev_stats.link_mac,6);
 			rfs_link_stats->hw_link_id = pdev_stats.hw_link_id;
 			ta_print_debug("Agent > %s: Hw Link ID: %d",__func__,pdev_stats.hw_link_id);
-			num_peers = 0;
 			ta_print_debug("pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
+			memcpy(rfs_link_stats->dl_ofdma_usr,
+				pdev_stats.dl_ofdma_usr,
+				sizeof(rfs_link_stats->dl_ofdma_usr));
+			memcpy(rfs_link_stats->ul_ofdma_usr,
+				pdev_stats.ul_ofdma_usr,
+				sizeof(rfs_link_stats->ul_ofdma_usr));
+			memcpy(rfs_link_stats->dl_mimo_usr,
+				pdev_stats.dl_mimo_usr,
+				sizeof(rfs_link_stats->dl_mimo_usr));
+			memcpy(rfs_link_stats->ul_mimo_usr,
+				pdev_stats.ul_mimo_usr,
+				sizeof(rfs_link_stats->ul_mimo_usr));
+
+			memcpy(rfs_link_stats->dl_mode_cnt,
+				pdev_stats.dl_mode_cnt,
+				sizeof(rfs_link_stats->dl_mode_cnt));
+			memcpy(rfs_link_stats->ul_mode_cnt,
+				pdev_stats.ul_mode_cnt,
+				sizeof(rfs_link_stats->ul_mode_cnt));
+
+			memcpy(rfs_link_stats->ch_access_delay,
+				pdev_stats.ch_access_delay,
+				sizeof(rfs_link_stats->ch_access_delay));
+
+			memcpy(rfs_link_stats->ts,
+				pdev_stats.ts,
+				sizeof(rfs_link_stats->ts));
+
+			rfs_link_stats->ch_util.tx_util = pdev_stats.ch_util.tx_util;
+			rfs_link_stats->ch_util.rx_util = pdev_stats.ch_util.rx_util;
+			rfs_link_stats->ch_util.chan_util = pdev_stats.ch_util.chan_util;
+			rfs_link_stats->rx_su_cnt = pdev_stats.rx_su_cnt;
+
+			num_peers = 0;
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
