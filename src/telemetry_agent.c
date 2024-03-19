@@ -413,6 +413,20 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 	return;
 }
 
+#ifdef TELEMETRY_AGENT_256M
+static inline bool telemetry_agent_send_init_stats(void)
+{
+	return false;
+}
+#else /* TELEMETRY_AGENT_256M */
+static inline bool telemetry_agent_send_init_stats(void)
+{
+	return true;
+}
+
+#endif /* TELEMETRY_AGENT_256M */
+
+
 void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	int i, j, k, idx, tid;
 	struct agent_soc_db *psoc_db = NULL;
@@ -432,9 +446,24 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	struct agent_msduq_info *rfs_msduq_info = NULL;
 	struct list_head *node;
 
+	/*  Schedule work for ERP periodic relayfs stats if service is enabled and sample timer is non-zero,
+	 *  Sample timer will be zero in case ERP service is disabled and lib alone is enabled
+	 */
+	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
+			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
+				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
+
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_MAIN_SERVICE);
 #endif
+
+	if (!telemetry_agent_send_init_stats()) {
+		ta_print_debug("Agent > %s Init Stats Skipped - Minimal Mode\n",
+			       __func__);
+		return;
+	}
+
 	stats_buffer->header.start_magic_num = 0xDEADBEAF;
 	stats_buffer->header.stats_version = 1;
 	stats_buffer->header.stats_type = RFS_INIT_DATA;
@@ -549,14 +578,6 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	/*  Schedule work for Admission Control periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_ADMCTRL_SERVICE])
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, msecs_to_jiffies(STATS_FREQUECY));
-
-	/*  Schedule work for ERP periodic relayfs stats if service is enabled and sample timer is non-zero,
-	 *  Sample timer will be zero in case ERP service is disabled and lib alone is enabled
-	 */
-	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
-			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
-				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
 
 	/*  Schedule work for Deterministic scheduler periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_DETSCHED_SERVICE])
@@ -833,8 +854,84 @@ static struct rchan_callbacks rfs_telemetry_agent_cb = {
 	.remove_buf_file = remove_buf_file_handler,
 };
 
+static inline int telemetry_agent_init_relayfs_basic(struct telemetry_agent_object *agent_obj)
+{
+	agent_obj->dir_ptr = debugfs_create_dir("qca_telemetry", NULL);
+	if (agent_obj->dir_ptr == NULL)
+		return -EPERM;
 
-int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj) 
+	agent_obj->rm_telemetry.rfs_channel_erp = relay_open("erp_telemetry_agent",
+		agent_obj->dir_ptr,
+		(sizeof(struct telemetry_erp_buffer) + 1000), MAX_SUB_BUFFERS,
+		&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rm_telemetry.rfs_channel_erp) {
+		debugfs_remove_recursive(agent_obj->dir_ptr);
+		agent_obj->dir_ptr = NULL;
+		return -EPERM;
+	}
+
+	return STATUS_SUCCESS;
+}
+
+#ifdef TELEMETRY_AGENT_256M
+static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_object *agent_obj)
+{
+	return STATUS_SUCCESS;
+}
+#else /* TELEMETRY_AGENT_256M */
+static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_object *agent_obj)
+{
+
+	agent_obj->rm_telemetry.rfs_channel_main = relay_open("main_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rm_telemetry.rfs_channel_main) {
+		return -EPERM;
+	}
+
+	agent_obj->rm_telemetry.rfs_channel_pmlo = relay_open("pmlo_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rm_telemetry.rfs_channel_pmlo) {
+		return -EPERM;
+	}
+
+	agent_obj->rm_telemetry.rfs_channel_deter = relay_open("ds_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_deter_buffer) + 1000), DETER_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rm_telemetry.rfs_channel_deter) {
+		return -EPERM;
+	}
+
+	agent_obj->rm_telemetry.rfs_channel_admctrl = relay_open("admctrl_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_admctrl_buffer) + 1000), ADMCTRL_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rm_telemetry.rfs_channel_admctrl) {
+		return -EPERM;
+	}
+
+	agent_obj->dir_emesh_ptr = debugfs_create_dir("qca_emesh_stats", NULL);
+	if (agent_obj->dir_emesh_ptr == NULL){
+		return -EPERM;
+	}
+
+	agent_obj->rfs_emesh_channel = relay_open("telemetry_agent",
+			agent_obj->dir_emesh_ptr,
+			(sizeof(struct telemetry_emesh_buffer) + 1000), EMESH_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+	if (!agent_obj->rfs_emesh_channel) {
+		return -EPERM;
+	}
+
+	return STATUS_SUCCESS;
+}
+#endif /* TELEMETRY_AGENT_256M */
+
+int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 {
 	if (g_agent_obj.rm_telemetry.rfs_channel_main)
 		relay_close(g_agent_obj.rm_telemetry.rfs_channel_main);
@@ -852,115 +949,28 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 		relay_close(g_agent_obj.rm_telemetry.rfs_channel_erp);
 
 	debugfs_remove_recursive(g_agent_obj.dir_ptr);
+	g_agent_obj.dir_ptr = NULL;
 
 	if (g_agent_obj.rfs_emesh_channel) {
 		relay_close(g_agent_obj.rfs_emesh_channel);
 	}
 
 	debugfs_remove_recursive(g_agent_obj.dir_emesh_ptr);
+	g_agent_obj.dir_emesh_ptr = NULL;
 
 	return STATUS_SUCCESS;
 }
 
-int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj) 
+int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 {
-	agent_obj->dir_ptr = debugfs_create_dir("qca_telemetry", NULL);
-	if (agent_obj->dir_ptr == NULL)
-		return -EPERM;
-
-	agent_obj->rm_telemetry.rfs_channel_main = relay_open("main_telemetry_agent",
-			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rm_telemetry.rfs_channel_main) {
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
-		return -EPERM;
-	}
-	agent_obj->rm_telemetry.rfs_channel_pmlo = relay_open("pmlo_telemetry_agent",
-			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_buffer) + 1000), MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rm_telemetry.rfs_channel_pmlo) {
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
+	if(telemetry_agent_init_relayfs_basic(agent_obj) != STATUS_SUCCESS) {
 		return -EPERM;
 	}
 
-	agent_obj->rm_telemetry.rfs_channel_deter = relay_open("ds_telemetry_agent",
-			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_deter_buffer) + 1000), DETER_MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rm_telemetry.rfs_channel_deter) {
-		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
+	if(telemetry_agent_init_relayfs_enhanched(agent_obj) != STATUS_SUCCESS) {
+		telemetry_agent_deinit_relayfs(agent_obj);
 		return -EPERM;
 	}
-
-	agent_obj->rm_telemetry.rfs_channel_admctrl = relay_open("admctrl_telemetry_agent",
-			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_admctrl_buffer) + 1000), ADMCTRL_MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rm_telemetry.rfs_channel_admctrl) {
-		relay_close(agent_obj->rm_telemetry.rfs_channel_deter);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
-		return -EPERM;
-	}
-	agent_obj->rm_telemetry.rfs_channel_erp = relay_open("erp_telemetry_agent",
-			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_erp_buffer) + 1000), MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rm_telemetry.rfs_channel_erp) {
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_deter);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_admctrl);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
-		return -EPERM;
-	}
-
-	agent_obj->dir_emesh_ptr = debugfs_create_dir("qca_emesh_stats", NULL);
-	if (agent_obj->dir_emesh_ptr == NULL){
-		relay_close(agent_obj->rm_telemetry.rfs_channel_admctrl);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_deter);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_erp);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
-		return -EPERM;
-	}
-
-	agent_obj->rfs_emesh_channel = relay_open("telemetry_agent",
-			agent_obj->dir_emesh_ptr,
-			(sizeof(struct telemetry_emesh_buffer) + 1000), EMESH_MAX_SUB_BUFFERS,
-			&rfs_telemetry_agent_cb, NULL);
-
-	if (!agent_obj->rfs_emesh_channel) {
-		debugfs_remove_recursive(agent_obj->dir_emesh_ptr);
-		agent_obj->dir_emesh_ptr = NULL;
-		relay_close(agent_obj->rm_telemetry.rfs_channel_admctrl);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_deter);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_pmlo);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_main);
-		relay_close(agent_obj->rm_telemetry.rfs_channel_erp);
-		debugfs_remove_recursive(agent_obj->dir_ptr);
-		agent_obj->dir_ptr = NULL;
-		return -EPERM;
-	}
-
 	return STATUS_SUCCESS;
 }
 
@@ -991,7 +1001,7 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	int status = STATUS_SUCCESS;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
-	int pdev_idx; 
+	int pdev_idx;
 
 	psoc_db  = &g_agent_obj.agent_db.psoc_db[pdev_obj->psoc_id];
 	if (!psoc_db->psoc_obj_ptr) {
@@ -1210,7 +1220,63 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_reset_peer_stats: telemetry_sawf_reset_peer_stats,
 };
 
-static int telemetry_agent_init_module(void)
+static int telemetry_agent_init_module_basic(void)
+{
+	int status = 0;
+
+	erp_stats_buffer = kzalloc(sizeof(struct telemetry_erp_buffer),GFP_ATOMIC);
+	if (!erp_stats_buffer) {
+		ta_print_error("erp stats buffer alloc failed");
+		return -EPERM;
+	}
+
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_main, telemetry_agent_stats_work_init_main);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_erp, telemetry_agent_stats_work_init_erp);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_erp, telemetry_agent_stats_work_periodic_erp);
+
+	return status;
+}
+
+static inline void telemetry_agent_free_basic_mem(void)
+{
+	kfree(erp_stats_buffer);
+}
+
+static inline void telemetry_agent_remove_workqueues_basic(void)
+{
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_main);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_erp);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_erp);
+}
+
+#ifdef TELEMETRY_AGENT_256M
+static inline void telemetry_agent_free_enhanched_mem(void)
+{
+}
+
+static inline int telemetry_agent_init_module_enhanched(void)
+{
+	return 0;
+}
+
+static inline void telemetry_agent_remove_workqueues_enhanched(void)
+{
+}
+
+#else /* TELEMETRY_AGENT_256M */
+
+static inline void telemetry_agent_remove_workqueues_enhanched(void)
+{
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_pmlo);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_deter);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_deter);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_admctrl);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl);
+	cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
+}
+
+static inline int telemetry_agent_init_module_enhanched(void)
 {
 	int status = 0;
 
@@ -1235,12 +1301,6 @@ static int telemetry_agent_init_module(void)
 		return -EPERM;
 	}
 
-	erp_stats_buffer = kzalloc(sizeof(struct telemetry_erp_buffer),GFP_ATOMIC);
-	if (!erp_stats_buffer) {
-		ta_print_error("erp stats buffer alloc failed");
-		return -EPERM;
-	}
-
 	admctrl_stats_buffer = kzalloc(sizeof(struct telemetry_admctrl_buffer), GFP_ATOMIC);
 	if (!admctrl_stats_buffer)
 	{
@@ -1248,45 +1308,53 @@ static int telemetry_agent_init_module(void)
 		return -EPERM;
 	}
 
-	register_telemetry_agent_ops(&agent_ops);
-	if(telemetry_agent_init_relayfs(&g_agent_obj) != STATUS_SUCCESS) {
-		return -EPERM;
-	}
-	g_agent_obj.debug_mask = TA_PRINT_ERROR;
-	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_main, telemetry_agent_stats_work_init_main);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_pmlo, telemetry_agent_stats_work_init_pmlo);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, telemetry_agent_stats_work_periodic_pmlo);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_deter, telemetry_agent_deter_stats_work_init);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, telemetry_deter_stats_work_periodic);
-	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_erp, telemetry_agent_stats_work_init_erp);
-	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_erp, telemetry_agent_stats_work_periodic_erp);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_admctrl, telemetry_agent_stats_work_init_admctrl);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, telemetry_agent_stats_work_periodic_admctrl);
 	INIT_DELAYED_WORK(&g_agent_obj.emesh_stats_work_periodic, telemetry_emesh_stats_work_periodic);
-	telemetry_sawf_init_ctx();
+
 	return status;
+}
+
+static inline void telemetry_agent_free_enhanched_mem(void)
+{
+	kfree(stats_buffer);
+	kfree(emesh_stats_buffer);
+	kfree(deter_stats_buffer);
+	kfree(admctrl_stats_buffer);
+	return;
+}
+#endif /* TELEMETRY_AGENT_256M*/
+
+static int telemetry_agent_init_module(void)
+{
+	if (telemetry_agent_init_module_basic())
+		return -EPERM;
+
+	register_telemetry_agent_ops(&agent_ops);
+
+	if(telemetry_agent_init_relayfs(&g_agent_obj) != STATUS_SUCCESS) {
+		return -EPERM;
+	}
+
+	g_agent_obj.debug_mask = TA_PRINT_ERROR;
+	telemetry_sawf_init_ctx();
+
+	return telemetry_agent_init_module_enhanched();
 }
 
 static void telemetry_agent_exit_module(void)
 {
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_main);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_pmlo);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_deter);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_deter);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_erp);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_erp);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_admctrl);
-	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl);
-	cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
+	telemetry_agent_remove_workqueues_basic();
+	telemetry_agent_remove_workqueues_enhanched();
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
+	telemetry_agent_free_basic_mem();
+	telemetry_agent_free_enhanched_mem();
 	unregister_telemetry_agent_ops(&agent_ops);
 	memset(&g_agent_obj, 0, sizeof(struct telemetry_agent_object));
-	kfree(stats_buffer);
-	kfree(emesh_stats_buffer);
-	kfree(deter_stats_buffer);
-	kfree(erp_stats_buffer);
-	kfree(admctrl_stats_buffer);
 	telemetry_sawf_free_ctx();
 	return;
 }
