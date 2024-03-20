@@ -25,6 +25,7 @@ struct telemetry_deter_buffer *deter_stats_buffer;
 struct telemetry_erp_buffer *erp_stats_buffer;
 struct telemetry_admctrl_buffer *admctrl_stats_buffer;
 extern struct telemetry_agent_ops *g_agent_ops;
+struct telemetry_energysvc_buffer *energysvc_stats_buffer;
 
 /**
  *   print_mac_addr: prints the mac address.
@@ -582,6 +583,9 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	/*  Schedule work for Deterministic scheduler periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_DETSCHED_SERVICE])
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUECY));
+
+	if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUECY));
 }
 
 void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
@@ -612,6 +616,14 @@ void telemetry_agent_stats_work_init_admctrl(struct work_struct *work)
 {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_ADMCTRL_SERVICE);
+#endif
+	return;
+}
+
+void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
+{
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_ENERGY_SERVICE);
 #endif
 	return;
 }
@@ -710,6 +722,60 @@ void telemetry_agent_stats_work_periodic_admctrl(struct work_struct *work)
 			      msecs_to_jiffies(STATS_FREQUECY));
 }
 
+void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
+{
+	int num_socs = 0, num_pdevs = 0;
+
+	int psoc_idx, pdev_idx;
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_link_iface_stats_obj pdev_stats = {0};
+
+	struct energysvc_soc_stats *rfs_soc_stats = NULL;
+	struct energysvc_link_stats *rfs_link_stats = NULL;
+
+	memset(energysvc_stats_buffer, 0, sizeof(struct telemetry_energysvc_buffer));
+	energysvc_stats_buffer->header.start_magic_num = 0xDEADBEAF;
+	energysvc_stats_buffer->header.stats_version = 1;
+	energysvc_stats_buffer->header.stats_type = RFS_STATS_DATA;
+	energysvc_stats_buffer->header.payload_len = sizeof(struct telemetry_energysvc_buffer);
+
+	ta_print_debug("Agent > %s len: %d\n", __func__,
+			energysvc_stats_buffer->header.payload_len);
+
+	for (psoc_idx = 0; psoc_idx < g_agent_obj.agent_db.num_socs; psoc_idx++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[psoc_idx];
+		rfs_soc_stats = &energysvc_stats_buffer->relayfs_stats.soc_stats[num_socs];
+
+		rfs_soc_stats->soc_id = psoc_db->soc_id;
+		rfs_soc_stats->num_links = psoc_db->num_pdevs;
+
+		num_pdevs = psoc_db->num_pdevs;
+
+		for (pdev_idx = 0; pdev_idx < num_pdevs; pdev_idx++) {
+			pdev_db  = &psoc_db->pdev_db[pdev_idx];
+			rfs_link_stats = &rfs_soc_stats->link_stats[pdev_idx];
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+			g_agent_ops->agent_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
+			rfs_link_stats->hw_link_id = pdev_stats.link_id;
+			rfs_link_stats->freetime = pdev_stats.freetime;
+#endif
+		} /* pdev */
+		num_socs++;
+	} /* soc */
+
+	energysvc_stats_buffer->relayfs_stats.num_soc = num_socs;
+	energysvc_stats_buffer->end_magic_num = 0xBEAFDEAD;
+	relay_write(g_agent_obj.rm_telemetry.rfs_channel_energysvc, energysvc_stats_buffer,
+			sizeof(struct telemetry_energysvc_buffer));
+	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_energysvc);
+
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUECY));
+	return;
+}
+
+
+
 static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 						struct delayed_work **work_init,
 						struct delayed_work **work_periodic,
@@ -749,6 +815,13 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_admctrl;
 			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_admctrl;
 			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_admctrl;
+			break;
+		}
+		case RM_ENERGY_SERVICE:
+		{
+			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_energysvc;
+			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_energysvc;
+			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_energysvc;
 			break;
 		}
 		default:
@@ -914,6 +987,15 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 		return -EPERM;
 	}
 
+	agent_obj->rm_telemetry.rfs_channel_energysvc = relay_open("energysvc_telemetry_agent",
+			agent_obj->dir_ptr,
+			(sizeof(struct telemetry_energysvc_buffer) + 1000), MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+
+	if (!agent_obj->rm_telemetry.rfs_channel_energysvc) {
+		return -EPERM;
+	}
+
 	agent_obj->dir_emesh_ptr = debugfs_create_dir("qca_emesh_stats", NULL);
 	if (agent_obj->dir_emesh_ptr == NULL){
 		return -EPERM;
@@ -947,6 +1029,9 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 
 	if (g_agent_obj.rm_telemetry.rfs_channel_erp)
 		relay_close(g_agent_obj.rm_telemetry.rfs_channel_erp);
+
+	if (g_agent_obj.rm_telemetry.rfs_channel_energysvc)
+		relay_close(g_agent_obj.rm_telemetry.rfs_channel_energysvc);
 
 	debugfs_remove_recursive(g_agent_obj.dir_ptr);
 	g_agent_obj.dir_ptr = NULL;
@@ -1274,6 +1359,8 @@ static inline void telemetry_agent_remove_workqueues_enhanched(void)
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_admctrl);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl);
 	cancel_delayed_work_sync(&g_agent_obj.emesh_stats_work_periodic);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_energysvc);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc);
 }
 
 static inline int telemetry_agent_init_module_enhanched(void)
@@ -1308,6 +1395,13 @@ static inline int telemetry_agent_init_module_enhanched(void)
 		return -EPERM;
 	}
 
+	energysvc_stats_buffer = kzalloc(sizeof(struct telemetry_energysvc_buffer),GFP_ATOMIC);
+	if (!energysvc_stats_buffer)
+	{
+		ta_print_error("energy service stats buffer alloc failed");
+		return -EPERM;
+	}
+
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_pmlo, telemetry_agent_stats_work_init_pmlo);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, telemetry_agent_stats_work_periodic_pmlo);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_deter, telemetry_agent_deter_stats_work_init);
@@ -1315,6 +1409,8 @@ static inline int telemetry_agent_init_module_enhanched(void)
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_admctrl, telemetry_agent_stats_work_init_admctrl);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, telemetry_agent_stats_work_periodic_admctrl);
 	INIT_DELAYED_WORK(&g_agent_obj.emesh_stats_work_periodic, telemetry_emesh_stats_work_periodic);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_energysvc, telemetry_agent_stats_work_init_energysvc);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, telemetry_agent_stats_work_periodic_energysvc);
 
 	return status;
 }
@@ -1325,6 +1421,7 @@ static inline void telemetry_agent_free_enhanched_mem(void)
 	kfree(emesh_stats_buffer);
 	kfree(deter_stats_buffer);
 	kfree(admctrl_stats_buffer);
+	kfree(energysvc_stats_buffer);
 	return;
 }
 #endif /* TELEMETRY_AGENT_256M*/

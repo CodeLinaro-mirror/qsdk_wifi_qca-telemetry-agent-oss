@@ -238,6 +238,28 @@ struct telemetry_admctrl_buffer {
         u_int32_t end_magic_num;
 };
 
+struct energysvc_link_stats {
+	uint16_t hw_link_id;
+	uint16_t freetime;
+};
+
+struct energysvc_soc_stats {
+	int soc_id;
+	int num_links;
+	struct energysvc_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+struct energysvc_relyfs_stats {
+	int num_soc;
+	struct energysvc_soc_stats soc_stats[MAX_SOCS];
+};
+
+struct telemetry_energysvc_buffer {
+	struct telemetry_agent_header header;
+	struct energysvc_relyfs_stats relayfs_stats;
+	u_int32_t end_magic_num;
+};
+
 enum wlan_vendor_channel_width {
 	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
 	WLAN_VENDOR_CHAN_WIDTH_20MHZ = 1,

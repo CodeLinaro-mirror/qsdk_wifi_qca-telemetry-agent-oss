@@ -135,6 +135,12 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_init_admctrl;
 	/* delayed work periodic for admission control stats */
 	struct delayed_work stats_work_periodic_admctrl;
+	/* relay(fs) channel for energy service */
+	struct rchan *rfs_channel_energysvc;
+	/* delayed work init for energy service */
+	struct delayed_work stats_work_init_energysvc;
+	/* delayed work periodic for energy service */
+	struct delayed_work stats_work_periodic_energysvc;
 };
 
 struct telemetry_agent_object {
