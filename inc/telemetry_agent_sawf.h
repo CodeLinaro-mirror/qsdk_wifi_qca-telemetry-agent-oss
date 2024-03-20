@@ -32,7 +32,7 @@
 #define pr_sawf_dbg(...) printk(KERN_DEBUG "SAWF Telemetry: " __VA_ARGS__)
 
 #define DELAY_BOUND_UNIT 1000
-#define THROUGHPUT_UNIT 1024
+#define THROUGHPUT_UNIT (1000/8)
 #define MSDU_LOSS_UNIT 1/1000000
 
 #define MAC_ADDR_SIZE 6
