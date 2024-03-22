@@ -129,6 +129,14 @@ struct agent_link_iface_stats_obj {
     uint32_t tx_mpdu_total[WLAN_AC_MAX];
     uint8_t link_airtime[WLAN_AC_MAX];
     uint8_t freetime;
+    uint8_t obss_airtime;
+    uint32_t traffic_condition[WLAN_AC_MAX];
+    uint32_t error_margin[WLAN_AC_MAX];
+    uint32_t num_dl_asymmetric_clients[WLAN_AC_MAX];
+    uint32_t num_ul_asymmetric_clients[WLAN_AC_MAX];
+    uint8_t dl_payload_ratio[WLAN_AC_MAX];
+    uint8_t ul_payload_ratio[WLAN_AC_MAX];
+    uint32_t avg_chan_latency[WLAN_AC_MAX];
 };
 
 struct emesh_peer_iface_stats_obj {

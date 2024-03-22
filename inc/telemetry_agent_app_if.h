@@ -268,6 +268,16 @@ enum wlan_vendor_t2lm_direction {
         WLAN_VENDOR_T2LM_BIDI_DIRECTION,
 };
 
+struct aa_estimation_stats {
+	uint32_t traffic_condition[WLAN_AC_MAX];
+	uint32_t error_margin[WLAN_AC_MAX];
+	uint32_t num_dl_asymmetric_clients[WLAN_AC_MAX];
+	uint32_t num_ul_asymmetric_clients[WLAN_AC_MAX];
+	uint8_t dl_payload_ratio[WLAN_AC_MAX];
+	uint8_t ul_payload_ratio[WLAN_AC_MAX];
+	uint32_t avg_chan_latency[WLAN_AC_MAX];
+};
+
 struct agent_peer_stats {
 	uint8_t peer_mld_mac[6];
 	uint8_t peer_link_mac[6];
@@ -283,10 +293,12 @@ struct agent_link_stats {
 	uint16_t hw_link_id;
 	uint8_t link_airtime[WLAN_AC_MAX];
 	uint8_t freetime;
+	uint8_t obss_airtime;
 	uint8_t available_airtime[WLAN_AC_MAX];
 	uint32_t m3_stats[WLAN_AC_MAX];
 	uint32_t m4_stats[WLAN_AC_MAX];
 	uint16_t num_peers;
+	struct aa_estimation_stats aa_est;
 	struct agent_peer_stats peer_stats[MAX_PEERS];
 };
 
