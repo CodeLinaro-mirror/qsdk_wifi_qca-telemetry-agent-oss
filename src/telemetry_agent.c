@@ -52,17 +52,17 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 	int i = 0, j = 0;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
-	struct agent_peer_db *peer_db = NULL;
 	int num_socs = 0;
 	int num_pdevs = 0;
-	int num_peers = 0;
 	struct deter_link_iface_stats_obj pdev_stats = {0};
+	/* int num_peers = 0;
+	struct agent_peer_db *peer_db = NULL;
 	struct deter_peer_iface_stats_obj *peer_stats = NULL;
+	struct deter_peer_stats *rfs_peer_stats = NULL; */
 
 	struct deter_soc_stats *rfs_soc_stats = NULL;
 	struct deter_link_stats *rfs_link_stats = NULL;
-	struct deter_peer_stats *rfs_peer_stats = NULL;
-	struct list_head *node;
+	// struct list_head *node;
 
 	num_socs = g_agent_obj.agent_db.num_socs;
 	ta_print_debug("Agent > %s Num Socs: %d",__func__, num_socs);
@@ -70,15 +70,14 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 	for (i = 0; i< num_socs; i++) {
 		memset(deter_stats_buffer, 0, sizeof(struct telemetry_deter_buffer));
 
-		ta_print_debug("Agent > %s len: %d\n", __func__,
-				deter_stats_buffer->header.payload_len);
-
 		deter_stats_buffer->header.start_magic_num = 0xFEEDEEEE;
 		deter_stats_buffer->header.stats_version = 1;
 		deter_stats_buffer->header.stats_type = RFS_STATS_DATA;
 		deter_stats_buffer->header.payload_len = sizeof(struct telemetry_deter_buffer);
-
 		deter_stats_buffer->relayfs_stats.num_soc = num_socs;
+
+		ta_print_debug("Agent > %s len: %d\n", __func__,
+				deter_stats_buffer->header.payload_len);
 
 		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
 		deter_stats_buffer->relayfs_stats.soc_stats.soc_id = psoc_db->soc_id;
@@ -97,8 +96,9 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 			memcpy(&rfs_link_stats->link_mac[0],
 			       pdev_stats.link_mac,6);
 			rfs_link_stats->hw_link_id = pdev_stats.hw_link_id;
+			rfs_link_stats->num_peers = pdev_db->num_peers;
 			ta_print_debug("Agent > %s: Hw Link ID: %d",__func__,pdev_stats.hw_link_id);
-			ta_print_debug("pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
+			ta_print_debug("Agent > pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
 			memcpy(rfs_link_stats->dl_ofdma_usr,
 				pdev_stats.dl_ofdma_usr,
 				sizeof(rfs_link_stats->dl_ofdma_usr));
@@ -132,7 +132,9 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 			rfs_link_stats->ch_util.chan_util = pdev_stats.ch_util.chan_util;
 			rfs_link_stats->rx_su_cnt = pdev_stats.rx_su_cnt;
 
+			/*
 			num_peers = 0;
+
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
 				peer_db = list_entry(node, struct agent_peer_db, node);
@@ -150,9 +152,9 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 					&peer_stats->deter,sizeof(rfs_peer_stats->deter));
 					rfs_peer_stats->vdev_id = peer_stats->vdev_id;
 				}
-			} /* peer */
-			spin_unlock_bh(&pdev_db->peer_db_lock);
-			rfs_link_stats->num_peers = num_peers;
+			}
+
+			spin_unlock_bh(&pdev_db->peer_db_lock); */
 		}/* pdev */
 		deter_stats_buffer->end_magic_num = 0xFEEDEEEE ^ i;
 		relay_write(g_agent_obj.rm_telemetry.rfs_channel_deter, deter_stats_buffer,

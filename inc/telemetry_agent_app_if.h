@@ -86,6 +86,8 @@ enum msduq_index {
     MSDUQ_MAX,
 };
 
+/* peer level stats are commented out due to bloating issue for now */
+/*
 struct deter_peer_tx_dl {
     uint64_t avg_rate;
     uint32_t mode_cnt;
@@ -113,7 +115,7 @@ struct deter_peer_stats {
     uint8_t peer_link_mac[6];
     uint8_t vdev_id;
     struct deter_peer_iface_stats deter[NUM_TIDS];
-};
+}; */
 
 struct deter_link_chan_util_stats {
     uint8_t chan_util;
@@ -140,7 +142,7 @@ struct deter_link_stats {
     uint32_t ch_access_delay[WLAN_AC_MAX];
     struct deter_link_chan_util_stats ch_util;
     struct deter_link_ul_trigger_status ts[TX_UL_MAX];
-    struct deter_peer_stats peer_stats[MAX_PEERS];
+    // struct deter_peer_stats peer_stats[MAX_PEERS];
 };
 
 struct deter_soc_stats {

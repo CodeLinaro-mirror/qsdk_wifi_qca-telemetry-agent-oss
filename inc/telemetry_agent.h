@@ -88,7 +88,7 @@ struct agent_pdev_db {
 	int num_peers;
 	spinlock_t peer_db_lock;
 	struct list_head peer_db_list;
-	struct deter_peer_iface_stats_obj peer_stats;
+	// struct deter_peer_iface_stats_obj peer_stats;
 };
 
 struct agent_soc_db {
