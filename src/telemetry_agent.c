@@ -342,6 +342,7 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 			       pdev_stats.link_airtime,
 			       sizeof(rfs_link_stats->link_airtime));
 			rfs_link_stats->freetime = pdev_stats.freetime;
+			rfs_link_stats->obss_airtime = pdev_stats.obss_airtime;
 			memcpy(rfs_link_stats->m3_stats, pdev_stats.congestion,
 			       sizeof(rfs_link_stats->m3_stats));
 			for (ac = 0; ac < WLAN_AC_MAX; ac++) {
@@ -352,6 +353,22 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 									(pdev_stats.tx_mpdu_total[ac] - pdev_db->tx_mpdu_total[ac]);
 				pdev_db->tx_mpdu_failed[ac] = pdev_stats.tx_mpdu_failed[ac];
 				pdev_db->tx_mpdu_total[ac] = pdev_stats.tx_mpdu_total[ac];
+
+				/* Populate AA estimation stats */
+				rfs_link_stats->aa_est.traffic_condition[ac] =
+					pdev_stats.traffic_condition[ac];
+				rfs_link_stats->aa_est.error_margin[ac] =
+					pdev_stats.error_margin[ac];
+				rfs_link_stats->aa_est.num_dl_asymmetric_clients[ac] =
+					pdev_stats.num_dl_asymmetric_clients[ac];
+				rfs_link_stats->aa_est.num_ul_asymmetric_clients[ac] =
+					pdev_stats.num_ul_asymmetric_clients[ac];
+				rfs_link_stats->aa_est.dl_payload_ratio[ac] =
+					pdev_stats.dl_payload_ratio[ac];
+				rfs_link_stats->aa_est.ul_payload_ratio[ac] =
+					pdev_stats.ul_payload_ratio[ac];
+				rfs_link_stats->aa_est.avg_chan_latency[ac] =
+					pdev_stats.avg_chan_latency[ac];
 			}
 #endif
 			num_peers = pdev_db->num_peers;
