@@ -150,9 +150,10 @@ struct emesh_link_iface_stats_obj {
 };
 
 struct deter_peer_iface_stats_obj {
+    /*
     uint8_t peer_link_mac[6];
     struct deter_peer_iface_stats deter[NUM_TIDS];
-    uint8_t vdev_id;
+    uint8_t vdev_id; */
 };
 
 struct deter_link_iface_stats_obj {
