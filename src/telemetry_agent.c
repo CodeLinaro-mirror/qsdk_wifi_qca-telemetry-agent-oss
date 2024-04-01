@@ -1325,6 +1325,7 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_alloc_peer: telemetry_sawf_alloc_peer,
 	sawf_updt_queue_info: telemetry_sawf_update_queue_info,
 	sawf_update_msduq_info: telemetry_sawf_update_msdu_queue_info,
+	sawf_clear_msduq_info: telemetry_sawf_clear_msdu_queue_info,
 	sawf_free_peer: telemetry_sawf_free_peer,
 	sawf_push_delay: telemetry_sawf_update_peer_delay,
 	sawf_push_delay_mvng: telemetry_sawf_update_peer_delay_mov_avg,

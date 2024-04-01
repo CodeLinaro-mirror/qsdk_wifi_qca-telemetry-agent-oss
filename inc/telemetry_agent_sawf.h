@@ -486,6 +486,16 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx,
 int telemetry_sawf_update_msdu_queue_info(void *telemetry_ctx,
 					  uint8_t hostq_id, uint8_t tid,
 					  uint8_t msduq, uint8_t svc_id);
+
+/**
+ * telemetry_sawf_clear_msdu_queue_info- CLear Msduq active bit
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @hostq_id: host queue id
+ *
+ * Return: 0 on success
+ */
+int telemetry_sawf_clear_msdu_queue_info(void *telemetry_ctx,
+					 uint8_t host_q_id);
 /**
  * telemetry_sawf_free_peer - Free telemetry-peer context
  * @telemetry_peer_ctx: telemetry-peer context

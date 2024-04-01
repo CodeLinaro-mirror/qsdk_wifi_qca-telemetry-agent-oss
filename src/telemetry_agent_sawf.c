@@ -397,6 +397,25 @@ int telemetry_sawf_update_msdu_queue_info(void *telemetry_ctx,
 	return 0;
 }
 
+int telemetry_sawf_clear_msdu_queue_info(void *telemetry_ctx,
+					 uint8_t host_q_id)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx;
+	struct peer_sawf_queue *peer_msduq;
+
+	if (!telemetry_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
+	peer_ctx = telemetry_ctx;
+	peer_msduq = &(peer_ctx->peer_msduq);
+
+	clear_bit(host_q_id, peer_msduq->active_queue);
+	pr_sawf_info("Host Q Idx: %d | Active bit cleared", host_q_id);
+
+	return 0;
+}
+
 void telemetry_sawf_free_peer(void *telemetry_ctx)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
