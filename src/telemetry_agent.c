@@ -724,15 +724,20 @@ void telemetry_agent_stats_work_periodic_admctrl(struct work_struct *work)
 
 void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 {
-	int num_socs = 0, num_pdevs = 0;
+	int num_socs = 0, num_pdevs = 0, num_peers = 0;
 
 	int psoc_idx, pdev_idx;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_peer_db *peer_db = NULL;
 	struct agent_link_iface_stats_obj pdev_stats = {0};
+	struct agent_peer_iface_stats_obj peer_stats = {0};
+	struct emesh_peer_iface_stats_obj peer_stats_tx = {0};
 
 	struct energysvc_soc_stats *rfs_soc_stats = NULL;
 	struct energysvc_link_stats *rfs_link_stats = NULL;
+	struct energysvc_peer_stats *rfs_peer_stats = NULL;
+	struct list_head *node;
 
 	memset(energysvc_stats_buffer, 0, sizeof(struct telemetry_energysvc_buffer));
 	energysvc_stats_buffer->header.start_magic_num = 0xDEADBEAF;
@@ -758,8 +763,42 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			g_agent_ops->agent_get_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->hw_link_id = pdev_stats.link_id;
+			memcpy(rfs_link_stats->available_airtime,
+				pdev_stats.available_airtime,
+				sizeof(rfs_link_stats->available_airtime));
+			memcpy(rfs_link_stats->link_airtime,
+				pdev_stats.link_airtime,
+				sizeof(rfs_link_stats->link_airtime));
 			rfs_link_stats->freetime = pdev_stats.freetime;
 #endif
+			num_peers = 0;
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db, node);
+				memset(&peer_stats, 0, sizeof(struct agent_peer_iface_stats_obj));
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+				if ((peer_db) && !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats))
+					      && !(g_agent_ops->agent_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats_tx)))
+#endif
+				{
+					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
+					memcpy(&rfs_peer_stats->peer_mld_mac[0], peer_stats.peer_mld_mac, 6);
+					memcpy(&rfs_peer_stats->peer_link_mac[0], peer_stats.peer_link_mac, 6);
+					memcpy(rfs_peer_stats->airtime_consumption,
+						peer_stats.airtime_consumption,
+						sizeof(rfs_peer_stats->airtime_consumption));
+					memcpy(rfs_peer_stats->tx_airtime_consumption,
+						peer_stats_tx.tx_airtime_consumption,
+						sizeof(rfs_peer_stats->tx_airtime_consumption));
+					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
+					num_peers++;
+				}
+
+				if (num_peers >= MAX_PEERS)
+					break;
+			} /* peer */
+			spin_unlock_bh(&pdev_db->peer_db_lock);
+			rfs_link_stats->num_peers = num_peers;
 		} /* pdev */
 		num_socs++;
 	} /* soc */
