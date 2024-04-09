@@ -240,28 +240,6 @@ struct telemetry_admctrl_buffer {
         u_int32_t end_magic_num;
 };
 
-struct energysvc_link_stats {
-	uint16_t hw_link_id;
-	uint16_t freetime;
-};
-
-struct energysvc_soc_stats {
-	int soc_id;
-	int num_links;
-	struct energysvc_link_stats link_stats[MAX_PDEV_LINKS];
-};
-
-struct energysvc_relyfs_stats {
-	int num_soc;
-	struct energysvc_soc_stats soc_stats[MAX_SOCS];
-};
-
-struct telemetry_energysvc_buffer {
-	struct telemetry_agent_header header;
-	struct energysvc_relyfs_stats relayfs_stats;
-	u_int32_t end_magic_num;
-};
-
 enum wlan_vendor_channel_width {
 	WLAN_VENDOR_CHAN_WIDTH_INVALID = 0,
 	WLAN_VENDOR_CHAN_WIDTH_20MHZ = 1,
@@ -339,6 +317,39 @@ struct relayfs_stats {
 	struct agent_soc_stats soc_stats[MAX_SOCS];
 };
 
+struct energysvc_peer_stats {
+	uint8_t peer_mld_mac[6];
+	uint8_t peer_link_mac[6];
+	uint8_t airtime_consumption[WLAN_AC_MAX];
+	uint16_t tx_airtime_consumption[WLAN_AC_MAX];
+	uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
+};
+
+struct energysvc_link_stats {
+	uint16_t hw_link_id;
+	uint16_t freetime;
+	uint8_t link_airtime[WLAN_AC_MAX];
+	uint8_t available_airtime[WLAN_AC_MAX];
+	uint16_t num_peers;
+	struct energysvc_peer_stats peer_stats[MAX_PEERS];
+};
+
+struct energysvc_soc_stats {
+	int soc_id;
+	int num_links;
+	struct energysvc_link_stats link_stats[MAX_PDEV_LINKS];
+};
+
+struct energysvc_relyfs_stats {
+	int num_soc;
+	struct energysvc_soc_stats soc_stats[MAX_SOCS];
+};
+
+struct telemetry_energysvc_buffer {
+	struct telemetry_agent_header header;
+	struct energysvc_relyfs_stats relayfs_stats;
+	u_int32_t end_magic_num;
+};
 
 /*
  * Init time interface information - complete view.
