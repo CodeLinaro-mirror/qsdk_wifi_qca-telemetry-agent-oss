@@ -118,6 +118,7 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_svc_class_param *svc_class;
+	struct telemetry_sawf_sla_param *sla_cfg;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	if (!sawf_ctx) {
@@ -130,7 +131,8 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 		return -1;
 	}
 
-	svc_class =  &sawf_ctx->svc_class.svc_class[svc_id - 1];
+	svc_class = &sawf_ctx->svc_class.svc_class[svc_id - 1];
+	sla_cfg = &sawf_ctx->sla.sla_cfg[svc_id - 1];
 
 	if (enable) {
 		svc_class->min_thruput_rate = min_thruput_rate;
@@ -145,8 +147,10 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 		memset(svc_class, 0,
 		       sizeof(struct telemetry_sawf_svc_class_param));
 		clear_bit(svc_id, sawf_ctx->svc_class.service_ids);
-		/* Clear SLA config also */
-		set_bit(svc_id, sawf_ctx->sla.sla_service_ids);
+
+		/* Clear SLA config*/
+		memset(sla_cfg, 0, sizeof(struct telemetry_sawf_sla_param));
+		clear_bit(svc_id, sawf_ctx->sla.sla_service_ids);
 	}
 	return 0;
 }
