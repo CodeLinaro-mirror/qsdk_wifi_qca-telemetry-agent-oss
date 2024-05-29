@@ -160,6 +160,8 @@ struct telemetry_agent_object {
 	struct agent_telemtry_db agent_db;
 	uint32_t debug_mask;
 	struct agent_rm_telemetry rm_telemetry;
+	/* lock for agent_db */
+	spinlock_t agent_lock;
 };
 
 

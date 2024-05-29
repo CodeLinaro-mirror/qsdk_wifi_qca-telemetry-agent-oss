@@ -20,14 +20,12 @@
 
 struct agent_psoc_obj {
     void *psoc_back_pointer;
-    spinlock_t psoc_lock;
     uint8_t psoc_id;
 };
 
 struct agent_pdev_obj {
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t pdev_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
 };
@@ -36,7 +34,6 @@ struct agent_peer_obj {
     void *peer_back_pointer;
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t peer_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
     uint8_t peer_mac_addr[6];
