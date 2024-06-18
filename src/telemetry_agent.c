@@ -563,6 +563,7 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 					memcpy(&rfs_peer_stats->ap_mld_addr[0],
 						peer_stats.ap_mld_addr, 6);
 					rfs_peer_stats->disabled_link_bitmap = peer_stats.disabled_link_bitmap;
+					rfs_peer_stats->peer_flags = peer_stats.peer_flags;
 
 					for (k = 0; k < SAWF_MAX_QUEUES; k++) {
 						rfs_msduq_info = &rfs_peer_stats->msduq_info[k];
