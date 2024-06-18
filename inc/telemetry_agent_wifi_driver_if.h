@@ -18,6 +18,15 @@
 
 #include "telemetry_agent_app_if.h"
 
+#define SET_PEER_FLAG(_val, _attr) do {             \
+    (_val) |= (1 << (PEER_FLAGS_##_attr##_BIT));    \
+    } while (0)
+#define CLEAR_PEER_FLAG(_val, _attr) do {           \
+    (_val) &= ~(1 << (PEER_FLAGS_##_attr##_BIT));   \
+    } while (0)
+#define IS_PEER_FLAG_SET(_val, _attr) \
+    ((_val >> PEER_FLAGS_##_attr##_BIT) & 0x1)
+
 struct agent_psoc_obj {
     void *psoc_back_pointer;
     uint8_t psoc_id;
@@ -48,6 +57,9 @@ enum agent_params {
 	AGENT_INVALID_PARAM,
 	AGENT_SET_DEBUG_LEVEL,
 };
+
+/* Bit definitions for peer_flags */
+#define PEER_FLAGS_BTM_CAP_BIT 0        /* Peer BTM capability */
 
 struct t2lm_of_tids {
 	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
@@ -86,6 +98,7 @@ struct agent_peer_iface_init_obj {
 	struct eht_peer_caps caps;          /* Peer capabilities */
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
+	uint16_t peer_flags;
 	struct agent_msduq_info_iface_obj msduq_info[SAWF_MAX_QUEUES];
 };
 
