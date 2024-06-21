@@ -213,6 +213,9 @@ struct telemetry_agent_ops {
     void (*agent_notify_app_event) (enum agent_notification_event, enum rm_services service_id,
                                     uint64_t service_data);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
+    void (*agent_dynamic_app_init_deinit_notify) (enum agent_notification_event,
+                                    enum rm_services service_id,
+                                    uint64_t service_data);
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
     int (*agent_get_peer_info) (void *obj, struct agent_peer_iface_init_obj *stats);

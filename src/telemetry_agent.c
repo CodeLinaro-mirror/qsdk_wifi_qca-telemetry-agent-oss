@@ -164,7 +164,7 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 		relay_flush(g_agent_obj.rm_telemetry.rfs_channel_deter);
 	} /* soc */
 
-	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUECY));
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUENCY));
 }
 
 void telemetry_emesh_stats_work_periodic(struct work_struct *work)
@@ -235,7 +235,7 @@ void telemetry_emesh_stats_work_periodic(struct work_struct *work)
 	relay_write(g_agent_obj.rfs_emesh_channel, emesh_stats_buffer,
 			sizeof(struct telemetry_emesh_buffer));
 	relay_flush(g_agent_obj.rfs_emesh_channel);
-	schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUECY));
+	schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUENCY));
 }
 
 void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
@@ -429,7 +429,7 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 			sizeof(struct telemetry_pmlo_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_pmlo);
 
-	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUECY));
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUENCY));
 	return;
 }
 
@@ -446,8 +446,7 @@ static inline bool telemetry_agent_send_init_stats(void)
 
 #endif /* TELEMETRY_AGENT_256M */
 
-
-void telemetry_agent_stats_work_init_main(struct work_struct *work) {
+static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init) {
 	int i, j, k, idx, tid;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
@@ -466,24 +465,6 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	struct agent_msduq_info *rfs_msduq_info = NULL;
 	struct list_head *node;
 
-	/*  Schedule work for ERP periodic relayfs stats if service is enabled and sample timer is non-zero,
-	 *  Sample timer will be zero in case ERP service is disabled and lib alone is enabled
-	 */
-	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
-			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
-				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
-
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
-	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_MAIN_SERVICE);
-#endif
-
-	if (!telemetry_agent_send_init_stats()) {
-		ta_print_debug("Agent > %s Init Stats Skipped - Minimal Mode\n",
-			       __func__);
-		return;
-	}
-
 	main_stats_buffer = kzalloc(sizeof(struct telemetry_rm_main_buffer), GFP_ATOMIC);
 	if (!main_stats_buffer){
 		ta_print_error("Allocation for stats buffer failed");
@@ -493,7 +474,8 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	memset(main_stats_buffer, 0, sizeof(struct telemetry_rm_main_buffer));
 	main_stats_buffer->header.start_magic_num = 0xDEADBEAF;
 	main_stats_buffer->header.stats_version = 1;
-	main_stats_buffer->header.stats_type = RFS_INIT_DATA;
+	main_stats_buffer->header.stats_type =
+			(dynamic_init) ? RFS_DYNAMIC_INIT_DATA : RFS_INIT_DATA;
 	main_stats_buffer->header.payload_len = sizeof(struct telemetry_rm_main_buffer);
 
 	for (i = 0; i < g_agent_obj.agent_db.num_socs; i++) {
@@ -600,21 +582,57 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 			sizeof(struct telemetry_rm_main_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_main);
 	kfree(main_stats_buffer);
+}
+
+
+void telemetry_agent_stats_work_init_main(struct work_struct *work) {
+	/*  Schedule work for ERP periodic relayfs stats if service is enabled and sample timer is non-zero,
+	 *  Sample timer will be zero in case ERP service is disabled and lib alone is enabled
+	 */
+	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
+			g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
+				msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
+
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_MAIN_SERVICE);
+#endif
+
+	if (!telemetry_agent_send_init_stats()) {
+		ta_print_debug("Agent > %s Init Stats Skipped - Minimal Mode\n",
+			       __func__);
+		return;
+	}
+
+	/* Send Relayfs init stats to RM */
+	telemetry_agent_trigger_rm_init_stats(false);
 
 	/*  Schedule work for PMLO periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_PMLO_SERVICE])
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUECY));
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUENCY));
 
 	/*  Schedule work for Admission Control periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_ADMCTRL_SERVICE])
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, msecs_to_jiffies(STATS_FREQUECY));
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, msecs_to_jiffies(STATS_FREQUENCY));
 
 	/*  Schedule work for Deterministic scheduler periodic relayfs stats if service is enabled */
 	if (g_agent_obj.rm_telemetry.app_init[RM_DETSCHED_SERVICE])
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUECY));
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUENCY));
 
 	if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUECY));
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
+}
+
+void telemetry_agent_stats_work_dynamic_init_main(struct work_struct *work) {
+
+	if (!telemetry_agent_send_init_stats()) {
+		ta_print_debug("Agent > %s Init Stats Skipped - Minimal Mode\n",
+				__func__);
+		return;
+	}
+
+	/* Send Relayfs init stats to RM */
+	telemetry_agent_trigger_rm_init_stats(true);
 }
 
 void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
@@ -748,7 +766,7 @@ void telemetry_agent_stats_work_periodic_admctrl(struct work_struct *work)
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_admctrl);
 
 	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl,
-			      msecs_to_jiffies(STATS_FREQUECY));
+			      msecs_to_jiffies(STATS_FREQUENCY));
 }
 
 void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
@@ -838,7 +856,7 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 			sizeof(struct telemetry_energysvc_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_energysvc);
 
-	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUECY));
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
 	return;
 }
 
@@ -847,8 +865,11 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 						struct delayed_work **work_init,
 						struct delayed_work **work_periodic,
+						struct delayed_work **work_dynamic_init,
 						uint8_t service_id)
 {
+	*work_dynamic_init =
+		&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main;
 	switch(service_id) {
 		case RM_MAIN_SERVICE:
 		{
@@ -914,6 +935,7 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 	struct rchan *rfs_channel;
 	struct delayed_work *work_init;
 	struct delayed_work *work_periodic;
+	struct delayed_work *work_dynamic_init;
 	uint8_t id;
 
 	ta_print_debug("Agent> %s event: %d for service %d \n", __func__, event, service_id);
@@ -922,7 +944,7 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 			telemetry_agent_rm_get_service_data(service_id, service_data);
 			g_agent_obj.rm_telemetry.app_init[service_id] = 1;
 			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
-								 &work_periodic, service_id);
+					&work_periodic, &work_dynamic_init, service_id);
 			if (work_init)
 				schedule_delayed_work(work_init, msecs_to_jiffies(1000));
 			break;
@@ -933,12 +955,15 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 				telemetry_agent_rm_get_delayed_work_info(&rfs_channel,
 									 &work_init,
 									 &work_periodic,
+									 &work_dynamic_init,
 									 id);
 				g_agent_obj.rm_telemetry.app_init[id] = 0;
 				if (rfs_channel)
 					relay_reset(rfs_channel);
 				if (work_init)
 					cancel_delayed_work_sync(work_init);
+				if (work_dynamic_init)
+					cancel_delayed_work_sync(work_dynamic_init);
 				if (work_periodic)
 					cancel_delayed_work_sync(work_periodic);
 			}
@@ -954,7 +979,7 @@ void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event eve
         ta_print_debug("Agent> %s event: %d\n", __func__, event);
         switch(event) {
                 case AGENT_NOTIFY_EVENT_INIT:
-                        schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUECY));
+                        schedule_delayed_work(&g_agent_obj.emesh_stats_work_periodic, msecs_to_jiffies(STATS_FREQUENCY));
                         break;
                 case AGENT_NOTIFY_EVENT_DEINIT:
                         relay_reset(g_agent_obj.rfs_emesh_channel);
@@ -966,6 +991,55 @@ void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event eve
         return;
 }
 
+void telemetry_agent_dynamic_app_init_deinit_notify(
+				     enum agent_notification_event event,
+				     enum rm_services service_id,
+				     uint64_t service_data)
+{
+	struct rchan *rfs_channel;
+	struct delayed_work *work_init;
+	struct delayed_work *work_periodic;
+	struct delayed_work *work_dynamic_init;
+
+	ta_print_debug("Agent> %s event: %d for service %d \n", __func__, event, service_id);
+	switch(event) {
+		case AGENT_NOTIFY_EVENT_INIT:
+			telemetry_agent_rm_get_service_data(service_id, service_data);
+			g_agent_obj.rm_telemetry.app_init[service_id] = 1;
+			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
+					&work_periodic, &work_dynamic_init, service_id);
+
+			if (work_init)
+				schedule_delayed_work(work_init,
+						msecs_to_jiffies(STATS_FREQUENCY));
+			if (work_dynamic_init)
+				schedule_delayed_work(work_dynamic_init,
+						msecs_to_jiffies(STATS_FREQUENCY));
+			if (work_periodic)
+				schedule_delayed_work(work_periodic,
+						msecs_to_jiffies(STATS_FREQUENCY));
+			break;
+		case AGENT_NOTIFY_EVENT_DEINIT:
+			telemetry_agent_rm_get_delayed_work_info(&rfs_channel,
+								 &work_init,
+								 &work_periodic,
+								 &work_dynamic_init,
+								 service_id);
+			g_agent_obj.rm_telemetry.app_init[service_id] = 0;
+			if (rfs_channel)
+				relay_reset(rfs_channel);
+			if (work_init)
+				cancel_delayed_work_sync(work_init);
+			if (work_dynamic_init)
+				cancel_delayed_work_sync(work_dynamic_init);
+			if (work_periodic)
+				cancel_delayed_work_sync(work_periodic);
+			break;
+		default:
+			break;
+	}
+	return;
+}
 
 static int remove_buf_file_handler(struct dentry *dentry)
 {
@@ -1354,6 +1428,7 @@ struct telemetry_agent_ops agent_ops = {
 	agent_get_param:telemetry_agent_get_param_handler,
 	agent_notify_app_event:telemetry_agent_notify_app_init,
 	agent_notify_emesh_event:telemetry_agent_notifiy_emesh_init_deinit,
+	agent_dynamic_app_init_deinit_notify:telemetry_agent_dynamic_app_init_deinit_notify,
 
 	/* SAWF-ops */
 	sawf_set_sla_dtct_cfg: telemetry_sawf_set_sla_detect_cfg,
@@ -1385,6 +1460,7 @@ static int telemetry_agent_init_module_basic(void)
 	}
 
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_main, telemetry_agent_stats_work_init_main);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main, telemetry_agent_stats_work_dynamic_init_main);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_erp, telemetry_agent_stats_work_init_erp);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_erp, telemetry_agent_stats_work_periodic_erp);
 
@@ -1399,6 +1475,7 @@ static inline void telemetry_agent_free_basic_mem(void)
 static inline void telemetry_agent_remove_workqueues_basic(void)
 {
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_main);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_erp);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_erp);
 }
