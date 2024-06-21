@@ -331,6 +331,7 @@ struct energysvc_link_stats {
 	uint8_t link_airtime[WLAN_AC_MAX];
 	uint8_t available_airtime[WLAN_AC_MAX];
 	uint16_t num_peers;
+	bool is_mon_enabled;
 	struct energysvc_peer_stats peer_stats[MAX_PEERS];
 };
 

@@ -134,6 +134,7 @@ struct agent_link_iface_stats_obj {
     uint8_t dl_payload_ratio[WLAN_AC_MAX];
     uint8_t ul_payload_ratio[WLAN_AC_MAX];
     uint32_t avg_chan_latency[WLAN_AC_MAX];
+    bool is_mon_enabled;
 };
 
 struct emesh_peer_iface_stats_obj {
