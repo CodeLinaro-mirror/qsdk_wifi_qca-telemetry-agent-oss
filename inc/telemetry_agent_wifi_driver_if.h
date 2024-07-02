@@ -20,14 +20,12 @@
 
 struct agent_psoc_obj {
     void *psoc_back_pointer;
-    spinlock_t psoc_lock;
     uint8_t psoc_id;
 };
 
 struct agent_pdev_obj {
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t pdev_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
 };
@@ -36,7 +34,6 @@ struct agent_peer_obj {
     void *peer_back_pointer;
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t peer_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
     uint8_t peer_mac_addr[6];
@@ -137,6 +134,7 @@ struct agent_link_iface_stats_obj {
     uint8_t dl_payload_ratio[WLAN_AC_MAX];
     uint8_t ul_payload_ratio[WLAN_AC_MAX];
     uint32_t avg_chan_latency[WLAN_AC_MAX];
+    bool is_mon_enabled;
 };
 
 struct emesh_peer_iface_stats_obj {
