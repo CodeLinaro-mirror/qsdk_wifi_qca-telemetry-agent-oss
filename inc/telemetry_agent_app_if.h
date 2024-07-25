@@ -21,6 +21,7 @@
 #define NUM_TIDS 8
 #define RFS_INIT_DATA 1
 #define RFS_STATS_DATA 2
+#define RFS_DYNAMIC_INIT_DATA 3
 #define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
 #define MAX_T2LM_INFO 2
 #define WLAN_AC_MAX 4
@@ -29,6 +30,7 @@
 #define MUMIMO_MAX_USERS 8
 #define SAWF_MAXQ_PTID 2
 #define SAWF_MAX_QUEUES (NUM_TIDS * SAWF_MAXQ_PTID)
+
 /*
    Buffer Format
    --------------------------------------------
@@ -331,6 +333,7 @@ struct energysvc_link_stats {
 	uint8_t link_airtime[WLAN_AC_MAX];
 	uint8_t available_airtime[WLAN_AC_MAX];
 	uint16_t num_peers;
+	bool is_mon_enabled;
 	struct energysvc_peer_stats peer_stats[MAX_PEERS];
 };
 
@@ -388,6 +391,7 @@ struct agent_peer_init_stats {
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
+	uint16_t peer_flags;
 	struct agent_msduq_info msduq_info[SAWF_MAX_QUEUES];
 };
 

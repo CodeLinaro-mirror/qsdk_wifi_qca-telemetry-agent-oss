@@ -18,16 +18,23 @@
 
 #include "telemetry_agent_app_if.h"
 
+#define SET_PEER_FLAG(_val, _attr) do {             \
+    (_val) |= (1 << (PEER_FLAGS_##_attr##_BIT));    \
+    } while (0)
+#define CLEAR_PEER_FLAG(_val, _attr) do {           \
+    (_val) &= ~(1 << (PEER_FLAGS_##_attr##_BIT));   \
+    } while (0)
+#define IS_PEER_FLAG_SET(_val, _attr) \
+    ((_val >> PEER_FLAGS_##_attr##_BIT) & 0x1)
+
 struct agent_psoc_obj {
     void *psoc_back_pointer;
-    spinlock_t psoc_lock;
     uint8_t psoc_id;
 };
 
 struct agent_pdev_obj {
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t pdev_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
 };
@@ -36,7 +43,6 @@ struct agent_peer_obj {
     void *peer_back_pointer;
     void *pdev_back_pointer;
     void *psoc_back_pointer;
-    spinlock_t peer_lock;
     uint8_t psoc_id;
     uint8_t pdev_id;
     uint8_t peer_mac_addr[6];
@@ -51,6 +57,9 @@ enum agent_params {
 	AGENT_INVALID_PARAM,
 	AGENT_SET_DEBUG_LEVEL,
 };
+
+/* Bit definitions for peer_flags */
+#define PEER_FLAGS_BTM_CAP_BIT 0        /* Peer BTM capability */
 
 struct t2lm_of_tids {
 	enum wlan_vendor_t2lm_direction direction; /* 0-DL, 1-UL, 2-BiDi */
@@ -89,6 +98,7 @@ struct agent_peer_iface_init_obj {
 	struct eht_peer_caps caps;          /* Peer capabilities */
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
+	uint16_t peer_flags;
 	struct agent_msduq_info_iface_obj msduq_info[SAWF_MAX_QUEUES];
 };
 
@@ -137,6 +147,7 @@ struct agent_link_iface_stats_obj {
     uint8_t dl_payload_ratio[WLAN_AC_MAX];
     uint8_t ul_payload_ratio[WLAN_AC_MAX];
     uint32_t avg_chan_latency[WLAN_AC_MAX];
+    bool is_mon_enabled;
 };
 
 struct emesh_peer_iface_stats_obj {
@@ -213,6 +224,9 @@ struct telemetry_agent_ops {
     void (*agent_notify_app_event) (enum agent_notification_event, enum rm_services service_id,
                                     uint64_t service_data);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
+    void (*agent_dynamic_app_init_deinit_notify) (enum agent_notification_event,
+                                    enum rm_services service_id,
+                                    uint64_t service_data);
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
     int (*agent_get_peer_info) (void *obj, struct agent_peer_iface_init_obj *stats);
