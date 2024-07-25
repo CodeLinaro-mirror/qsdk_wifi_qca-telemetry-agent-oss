@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -118,6 +118,7 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_svc_class_param *svc_class;
+	struct telemetry_sawf_sla_param *sla_cfg;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	if (!sawf_ctx) {
@@ -130,7 +131,8 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 		return -1;
 	}
 
-	svc_class =  &sawf_ctx->svc_class.svc_class[svc_id - 1];
+	svc_class = &sawf_ctx->svc_class.svc_class[svc_id - 1];
+	sla_cfg = &sawf_ctx->sla.sla_cfg[svc_id - 1];
 
 	if (enable) {
 		svc_class->min_thruput_rate = min_thruput_rate;
@@ -145,6 +147,10 @@ int telemetry_sawf_set_svclass_cfg(bool enable,
 		memset(svc_class, 0,
 		       sizeof(struct telemetry_sawf_svc_class_param));
 		clear_bit(svc_id, sawf_ctx->svc_class.service_ids);
+
+		/* Clear SLA config*/
+		memset(sla_cfg, 0, sizeof(struct telemetry_sawf_sla_param));
+		clear_bit(svc_id, sawf_ctx->sla.sla_service_ids);
 	}
 	return 0;
 }
@@ -365,6 +371,55 @@ int telemetry_sawf_update_queue_info(void *telemetry_ctx, uint8_t host_q_id,
 	return 0;
 }
 
+int telemetry_sawf_update_msdu_queue_info(void *telemetry_ctx,
+					  uint8_t host_q_id,
+					  uint8_t tid, uint8_t msduq,
+					  uint8_t svc_id)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx;
+	struct peer_sawf_queue *peer_msduq;
+
+	if (!telemetry_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
+	peer_ctx = telemetry_ctx;
+	peer_msduq = &(peer_ctx->peer_msduq);
+
+	peer_msduq->msduq[host_q_id].htt_msduq = msduq;
+	peer_msduq->msduq[host_q_id].tid = tid;
+	peer_msduq->msduq[host_q_id].svc_id = svc_id;
+	peer_msduq->msduq_map[tid][msduq] = host_q_id;
+
+	set_bit(host_q_id, peer_msduq->active_queue);
+	pr_sawf_info("Host Q Idx: %d | TID: %d | Queue ID: %d| Svc ID: %d|",
+		     peer_msduq->msduq[host_q_id].htt_msduq,
+		     peer_msduq->msduq[host_q_id].tid,
+		     peer_msduq->msduq_map[tid][msduq],
+		     peer_msduq->msduq[host_q_id].svc_id);
+
+	return 0;
+}
+
+int telemetry_sawf_clear_msdu_queue_info(void *telemetry_ctx,
+					 uint8_t host_q_id)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx;
+	struct peer_sawf_queue *peer_msduq;
+
+	if (!telemetry_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
+	peer_ctx = telemetry_ctx;
+	peer_msduq = &(peer_ctx->peer_msduq);
+
+	clear_bit(host_q_id, peer_msduq->active_queue);
+	pr_sawf_info("Host Q Idx: %d | Active bit cleared", host_q_id);
+
+	return 0;
+}
+
 void telemetry_sawf_free_peer(void *telemetry_ctx)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
@@ -446,7 +501,7 @@ static int telemetry_notify_breach(struct telemetry_sawf_peer_ctx *peer,
 		msduq = &peer->peer_msduq.msduq[queue];
 		tid = msduq->tid;
 		g_agent_ops->sawf_notify_breach(peer->mac_addr, svc_id, param,
-						set_clear, tid);
+						set_clear, tid, queue);
 
 		stats->breach[param] = set_clear;
 	}
@@ -619,7 +674,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint64_t in_bytes = 0, in_cnt = 0;
 	uint64_t tx_bytes = 0, tx_cnt = 0;
 	uint64_t in_rate = 0, eg_rate = 0;
-	uint32_t throughput;
+	uint64_t throughput;
 	uint32_t threshold;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
@@ -656,7 +711,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		     eg_rate < div_u64((in_rate * threshold), 100))) {
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
-			pr_sawf_err("Configured Min Throughput: %d", throughput);
+			pr_sawf_err("Configured Min Throughput: %llu", throughput);
 			pr_sawf_err("Ingress Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,
@@ -675,7 +730,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		    eg_rate < div_u64((throughput * threshold), 100)) {
 			pr_sawf_err("SLA Max Throughput Breach Detected peer service ID:%d",
 				    svc_id);
-			pr_sawf_err("Configured Max Throughput: %d", throughput);
+			pr_sawf_err("Configured Max Throughput: %llu", throughput);
 			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,
