@@ -191,7 +191,11 @@ struct telemetry_sawf_ctx {
  * telemetry_sawf_throughput - telemetry sawf throughput-stats
  * @last_bytes: last byte-count
  * @last_count: last pkt-count
+ * @avg_counter: cycle counter
  * @rate: last rate
+ * @min_throughput: min throughput
+ * @max_throughput: max throughput
+ * @avg_throughput: avg_throughput
  */
 struct telemetry_sawf_throughput
 {
@@ -199,8 +203,12 @@ struct telemetry_sawf_throughput
 	uint64_t last_count;
 	uint64_t last_in_bytes;
 	uint64_t last_in_count;
+	uint64_t avg_counter;
 	uint32_t in_rate;
 	uint32_t eg_rate;
+	uint32_t min_throughput;
+	uint32_t max_throughput;
+	uint32_t avg_throughput;
 };
 
 /**
@@ -255,6 +263,7 @@ struct telemetry_sawf_tx {
 	struct telemetry_sawf_drops msdu_drop;
 	struct telemetry_service_interval service_interval;
 	struct telemetry_burst_size burst_size;
+	struct telemetry_msduq_tx_stats retries_mcs_stats;
 };
 
 /**

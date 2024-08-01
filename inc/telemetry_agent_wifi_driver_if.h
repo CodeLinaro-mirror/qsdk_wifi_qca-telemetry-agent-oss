@@ -17,6 +17,7 @@
 #define __TELEMETRY_AGENT_WIFI_DRIVER_IF_H__
 
 #include "telemetry_agent_app_if.h"
+#define TELEMETRY_MAX_MCS (16 + 1)
 
 #define SET_PEER_FLAG(_val, _attr) do {             \
     (_val) |= (1 << (PEER_FLAGS_##_attr##_BIT));    \
@@ -212,6 +213,26 @@ struct admctrl_peer_iface_stats_obj {
     struct admctrl_msduq_iface_stats_obj msduq_stats[SAWF_MAX_QUEUES];
 };
 
+enum telemetry_packet_type {
+	TELEMETRY_DOT11_A = 0,
+	TELEMETRY_DOT11_B = 1,
+	TELEMETRY_DOT11_N = 2,
+	TELEMETRY_DOT11_AC = 3,
+	TELEMETRY_DOT11_AX = 4,
+	TELEMETRY_DOT11_BE = 5,
+	TELEMETRY_DOT11_MAX,
+};
+
+struct telemetry_pkt_type {
+	uint32_t mcs_count[TELEMETRY_MAX_MCS];
+};
+
+struct telemetry_msduq_tx_stats {
+	uint32_t tx_failed;
+	uint32_t total_retries_count;
+	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -309,6 +330,9 @@ struct telemetry_agent_ops {
     void (* sawf_notify_breach) (uint8_t *mac_addr, uint8_t svc_id,
                                  uint8_t param, bool set_clear, uint8_t tid,
                                  uint8_t queue_id);
+    int (* sawf_get_msduq_tx_stats) (void *soc, void *arg,
+                                     void *msduq_tx_stats,
+                                     uint8_t msduq);
 };
 
 void wlan_cfg80211_t2lm_app_reply_generic_response(void * gen_data,
