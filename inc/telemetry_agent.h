@@ -66,6 +66,19 @@ agent and APP */
     }                    \
 } while (0)
 
+struct agent_derived_peer_stats {
+	uint32_t eg_rate;
+	uint32_t min_throughput;
+	uint32_t max_throughput;
+	uint32_t avg_throughput;
+	uint32_t avg_counter;
+};
+
+struct agent_telemetry_peer_tx_ext_stats {
+	struct agent_peer_tx_ext_stats raw_peer_stats;
+	struct agent_derived_peer_stats derived_peer_stats;
+};
+
 struct agent_peer_db {
 	struct list_head node;
 	void *peer_obj_ptr;
@@ -80,6 +93,7 @@ struct agent_peer_db {
 	uint16_t eff_chan_bw;
 	uint32_t tx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
 	uint32_t rx_mcs_nss_map[WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX];
+	struct agent_telemetry_peer_tx_ext_stats peer_stats;
 };
 
 struct agent_pdev_db {
@@ -164,6 +178,7 @@ struct telemetry_agent_object {
 	struct agent_rm_telemetry rm_telemetry;
 	/* lock for agent_db */
 	spinlock_t agent_lock;
+	struct timer_list peer_stats_timer;
 };
 
 

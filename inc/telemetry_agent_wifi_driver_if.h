@@ -233,6 +233,16 @@ struct telemetry_msduq_tx_stats {
 	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
 };
 
+struct agent_peer_tx_ext_stats {
+	uint32_t avg_ack_rssi;
+	uint32_t tx_failed;
+	uint32_t retries;
+	uint32_t total_retries;
+	uint64_t tx_cnt;
+	uint64_t tx_bytes;
+	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
+};
+
 struct telemetry_agent_ops {
     int  (*agent_psoc_create_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
     int  (*agent_psoc_destroy_handler) (void *arg, struct agent_psoc_obj *psoc_obj);
@@ -261,6 +271,8 @@ struct telemetry_agent_ops {
     int (*agent_get_erp_pdev_stats) (void *obj, struct erp_link_iface_stats_obj *stats);
     int (*agent_get_admctrl_pdev_stats) (void *obj, struct admctrl_link_iface_stats_obj *stats);
     int (*agent_get_admctrl_peer_stats) (void *obj, struct admctrl_peer_iface_stats_obj *stats);
+    int (*agent_get_peer_tx_stats) (void *obj, void *stats);
+    int (*agent_get_pext_stats_enabled_flag) (void *obj, void *flag);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

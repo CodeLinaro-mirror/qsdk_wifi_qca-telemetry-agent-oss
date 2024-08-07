@@ -1335,6 +1335,141 @@ static int telemetry_agent_pdev_create_handler(void *arg, struct agent_pdev_obj 
 	return status;
 }
 
+void telemtry_get_telemetry_tx_peer_stats(struct agent_peer_db *peer_db,
+					  struct agent_peer_tx_ext_stats *raw_peer_stats)
+{
+	if (g_agent_ops)
+		g_agent_ops->agent_get_peer_tx_stats(peer_db,
+						     (void *)raw_peer_stats);
+}
+
+void telemetry_compute_peer_tx_stats(struct agent_peer_db *peer_db,
+				     struct agent_peer_tx_ext_stats *raw_peer_stats)
+{
+	uint64_t last_tx_bytes, temp_avg_throughput_cal;
+	uint8_t pkt_type_index, mcs_index;
+
+	last_tx_bytes = peer_db->peer_stats.raw_peer_stats.tx_bytes;
+	peer_db->peer_stats.raw_peer_stats.tx_bytes = raw_peer_stats->tx_bytes;
+	peer_db->peer_stats.raw_peer_stats.tx_cnt = raw_peer_stats->tx_cnt;
+	peer_db->peer_stats.raw_peer_stats.avg_ack_rssi = raw_peer_stats->avg_ack_rssi;
+	peer_db->peer_stats.raw_peer_stats.tx_failed = raw_peer_stats->tx_failed;
+	peer_db->peer_stats.raw_peer_stats.retries = raw_peer_stats->retries;
+	peer_db->peer_stats.raw_peer_stats.total_retries = raw_peer_stats->total_retries;
+	peer_db->peer_stats.derived_peer_stats.eg_rate = raw_peer_stats->tx_bytes - last_tx_bytes;
+	peer_db->peer_stats.derived_peer_stats.avg_counter++;
+
+	if (peer_db->peer_stats.derived_peer_stats.avg_counter == 1) {
+		peer_db->peer_stats.derived_peer_stats.min_throughput =
+		peer_db->peer_stats.derived_peer_stats.eg_rate;
+		peer_db->peer_stats.derived_peer_stats.max_throughput =
+		peer_db->peer_stats.derived_peer_stats.eg_rate;
+	}
+	if (peer_db->peer_stats.derived_peer_stats.eg_rate <
+		peer_db->peer_stats.derived_peer_stats.min_throughput) {
+		peer_db->peer_stats.derived_peer_stats.min_throughput =
+		peer_db->peer_stats.derived_peer_stats.eg_rate;
+	}
+	if (peer_db->peer_stats.derived_peer_stats.eg_rate >
+		peer_db->peer_stats.derived_peer_stats.max_throughput) {
+		peer_db->peer_stats.derived_peer_stats.max_throughput =
+		peer_db->peer_stats.derived_peer_stats.eg_rate;
+	}
+
+	temp_avg_throughput_cal = peer_db->peer_stats.derived_peer_stats.avg_throughput *
+				  (peer_db->peer_stats.derived_peer_stats.avg_counter - 1);
+
+	peer_db->peer_stats.derived_peer_stats.avg_throughput = div_u64((temp_avg_throughput_cal +
+					 peer_db->peer_stats.derived_peer_stats.eg_rate),
+					 peer_db->peer_stats.derived_peer_stats.avg_counter);
+
+	for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
+		for (mcs_index = 0; mcs_index < TELEMETRY_MAX_MCS; mcs_index++) {
+			peer_db->peer_stats.raw_peer_stats.packet_type[pkt_type_index].mcs_count[mcs_index] =
+			raw_peer_stats->packet_type[pkt_type_index].mcs_count[mcs_index];
+		}
+	}
+}
+
+void telemetry_extract_and_detect_peer_breach(struct agent_peer_db *peer_db)
+{
+	struct agent_peer_tx_ext_stats raw_peer_stats = {0};
+
+	telemtry_get_telemetry_tx_peer_stats(peer_db, &raw_peer_stats);
+
+	telemetry_compute_peer_tx_stats(peer_db, &raw_peer_stats);
+
+	return;
+}
+
+static int telemetry_detect_peer_breach(void)
+{
+	int num_socs_index, num_pdevs_index;
+
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_peer_db *peer_db = NULL;
+	struct list_head *node;
+
+	spin_lock_bh(&g_agent_obj.agent_lock);
+
+	for (num_socs_index = 0; num_socs_index < MAX_SOCS_DB; num_socs_index++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[num_socs_index];
+		if (!psoc_db->psoc_obj_ptr)
+			continue;
+
+		for (num_pdevs_index = 0; num_pdevs_index < MAX_PDEV_LINKS_DB; num_pdevs_index++) {
+			pdev_db = &psoc_db->pdev_db[num_pdevs_index];
+			if (!pdev_db->pdev_obj_ptr)
+				continue;
+
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db,
+						     node);
+				if(peer_db)
+					telemetry_extract_and_detect_peer_breach(peer_db);
+			}
+			spin_unlock_bh(&pdev_db->peer_db_lock);
+		}
+	}
+	spin_unlock_bh(&g_agent_obj.agent_lock);
+
+	return 0;
+}
+
+void telemetry_detect_peer_stats_per_sec(struct timer_list *timer)
+{
+	telemetry_detect_peer_breach();
+	mod_timer(&g_agent_obj.peer_stats_timer,
+		  jiffies + msecs_to_jiffies(STATS_FREQUENCY));
+}
+
+void telemetry_peer_stats_timer_init(void)
+{
+	timer_setup(&g_agent_obj.peer_stats_timer,
+		    telemetry_detect_peer_stats_per_sec, 0);
+	add_timer(&g_agent_obj.peer_stats_timer);
+	mod_timer(&g_agent_obj.peer_stats_timer,
+		  jiffies + msecs_to_jiffies(STATS_FREQUENCY));
+}
+
+bool telemetry_get_pext_stats_config(struct agent_soc_db *soc_db)
+{
+	bool pext_stats_enabled = 0;
+
+	if (g_agent_ops)
+		g_agent_ops->agent_get_pext_stats_enabled_flag(soc_db,
+							       &pext_stats_enabled);
+
+	return pext_stats_enabled;
+}
+
+void telemetry_peer_stats_timer_stop(void)
+{
+	del_timer(&g_agent_obj.peer_stats_timer);
+}
+
 static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj *peer_obj)
 
 {
@@ -1380,6 +1515,11 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 			peer_db->psoc_obj_ptr, peer_obj->psoc_id,
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0]));
+
+	if (!pdev_db->num_peers && telemetry_get_pext_stats_config(psoc_db)) {
+		telemetry_peer_stats_timer_init();
+	}
+
 	pdev_db->num_peers++;
 	spin_unlock_bh(&pdev_db->peer_db_lock);
 	spin_unlock_bh(&g_agent_obj.agent_lock);
@@ -1388,7 +1528,6 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 
 
 static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj *psoc_obj)
-
 {
 	int status = STATUS_SUCCESS;
 	struct agent_soc_db *psoc_db = NULL;
@@ -1478,6 +1617,11 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		ta_print_error("%s: Node not found\n", __func__);
 	}
 	pdev_db->num_peers--;
+
+	if (!pdev_db->num_peers && telemetry_get_pext_stats_config(psoc_db)) {
+		telemetry_peer_stats_timer_stop();
+	}
+
 	spin_unlock_bh(&pdev_db->peer_db_lock);
 	spin_unlock_bh(&g_agent_obj.agent_lock);
 	return status;
