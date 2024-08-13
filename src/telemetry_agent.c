@@ -1681,6 +1681,8 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_pull_rate: telemetry_sawf_get_rate,
 	sawf_pull_mov_avg: telemetry_sawf_pull_mov_avg,
 	sawf_reset_peer_stats: telemetry_sawf_reset_peer_stats,
+	sawf_set_sla_detect_config:telemetry_sawf_set_sla_detect_config,
+	sawf_set_sla_config: telemetry_sawf_set_sla_config,
 };
 
 static int telemetry_agent_init_module_basic(void)

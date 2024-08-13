@@ -106,6 +106,68 @@ int telemetry_sawf_set_sla_detect_cfg(uint8_t type,
 	return 0;
 }
 
+int telemetry_sawf_set_sla_detect_config(uint8_t type,
+					 uint8_t min_thruput_rate,
+					 uint8_t max_thruput_rate,
+					 uint8_t burst_size,
+					 uint8_t service_interval,
+					 uint8_t delay_bound,
+					 uint8_t msdu_ttl,
+					 uint8_t msdu_rate_loss,
+					 uint8_t packet_error_rate,
+					 uint8_t mcs_min_threshold,
+					 uint8_t mcs_max_threshold,
+					 uint8_t retries_threshold)
+{
+	struct telemetry_sawf_ctx *sawf_ctx;
+	struct telemetry_sawf_sla_param *sla_detect;
+
+	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF context is NULL");
+		return -1;
+	}
+
+	if (type >= SAWF_SLA_DETECT_MAX) {
+		pr_sawf_err("Wrong SLA Detect Type");
+		return -1;
+	}
+
+	/* The type field denotes the type of SLA detect */
+	sla_detect = &sawf_ctx->sla_detect.sla_detect[type];
+
+	/* Update the fields for which SLA detection is enabled */
+	sla_detect->min_thruput_rate = min_thruput_rate;
+	sla_detect->max_thruput_rate = max_thruput_rate;
+	sla_detect->burst_size = burst_size;
+	sla_detect->service_interval = service_interval;
+	sla_detect->delay_bound = delay_bound;
+	sla_detect->msdu_ttl = msdu_ttl;
+	sla_detect->msdu_rate_loss = msdu_rate_loss;
+	sla_detect->packet_error_rate = packet_error_rate;
+	sla_detect->mcs_min_threshold = mcs_min_threshold;
+	sla_detect->mcs_max_threshold = mcs_max_threshold;
+	sla_detect->retries_threshold = retries_threshold;
+
+	pr_sawf_dbg("type %d", type);
+	pr_sawf_dbg("detect->min_thruput_rate:%d",
+		    sla_detect->min_thruput_rate);
+	pr_sawf_dbg("detect->max_thruput_rate:%d",
+		    sla_detect->max_thruput_rate);
+	pr_sawf_dbg("detect->burst_size:%d", sla_detect->burst_size);
+	pr_sawf_dbg("detect->service_interval:%d",
+		    sla_detect->service_interval);
+	pr_sawf_dbg("detect->delay_bound:%d", sla_detect->delay_bound);
+	pr_sawf_dbg("detect->msdu_ttl:%d", sla_detect->msdu_ttl);
+	pr_sawf_dbg("detect->msdu_rate_loss:%d", sla_detect->msdu_rate_loss);
+	pr_sawf_dbg("detect->packet_error_rate:%d", sla_detect->packet_error_rate);
+	pr_sawf_dbg("detect->mcs_min_threshold:%d", sla_detect->mcs_min_threshold);
+	pr_sawf_dbg("detect->mcs_max_threshold:%d", sla_detect->mcs_max_threshold);
+	pr_sawf_dbg("detect->retries_threshold:%d", sla_detect->retries_threshold);
+
+	return 0;
+}
+
 int telemetry_sawf_set_svclass_cfg(bool enable,
 				   uint8_t svc_id,
 				   uint32_t min_thruput_rate,
@@ -197,6 +259,63 @@ int telemetry_sawf_set_sla_cfg(uint8_t svc_id,
 	pr_sawf_dbg("cfg->delay_bound %d", sla_cfg->delay_bound);
 	pr_sawf_dbg("cfg->msdu_ttl %d", sla_cfg->msdu_ttl);
 	pr_sawf_dbg("cfg->msdu_rate_loss %d", sla_cfg->msdu_rate_loss);
+	return 0;
+}
+
+int telemetry_sawf_set_sla_config(uint8_t svc_id,
+				  uint8_t min_thruput_rate,
+				  uint8_t max_thruput_rate,
+				  uint8_t burst_size,
+				  uint8_t service_interval,
+				  uint8_t delay_bound,
+				  uint8_t msdu_ttl,
+				  uint8_t msdu_rate_loss,
+				  uint8_t packet_error_rate,
+				  uint8_t mcs_min_threshold,
+				  uint8_t mcs_max_threshold,
+				  uint8_t retries_threshold)
+{
+	struct telemetry_sawf_ctx *sawf_ctx;
+	struct telemetry_sawf_sla_param *sla_cfg;
+
+	sawf_ctx = telemetry_sawf_get_ctx();
+	if (!sawf_ctx) {
+		pr_sawf_err("SAWF context is NULL");
+		return -1;
+	}
+
+	if (svc_id < SAWF_MIN_SVC_CLASS || svc_id > SAWF_MAX_SVC_CLASS) {
+		pr_sawf_err("Invalid svc_id %u", svc_id);
+		return -1;
+	}
+	sla_cfg =  &sawf_ctx->sla.sla_cfg[svc_id - 1];
+
+	sla_cfg->min_thruput_rate = min_thruput_rate;
+	sla_cfg->max_thruput_rate = max_thruput_rate;
+	sla_cfg->burst_size = burst_size;
+	sla_cfg->service_interval = service_interval;
+	sla_cfg->delay_bound = delay_bound;
+	sla_cfg->msdu_ttl = msdu_ttl;
+	sla_cfg->msdu_rate_loss = msdu_rate_loss;
+	sla_cfg->packet_error_rate = packet_error_rate;
+	sla_cfg->mcs_min_threshold = mcs_min_threshold;
+	sla_cfg->mcs_max_threshold = mcs_max_threshold;
+	sla_cfg->retries_threshold = retries_threshold;
+
+	set_bit(svc_id, sawf_ctx->sla.sla_service_ids);
+
+	pr_sawf_dbg("Service ID: %d", svc_id);
+	pr_sawf_dbg("cfg->min_thruput_rate %d", sla_cfg->min_thruput_rate);
+	pr_sawf_dbg("cfg->max_thruput_rate %d", sla_cfg->max_thruput_rate);
+	pr_sawf_dbg("cfg->burst_size %d", sla_cfg->burst_size);
+	pr_sawf_dbg("cfg->service_interval %d", sla_cfg->service_interval);
+	pr_sawf_dbg("cfg->delay_bound %d", sla_cfg->delay_bound);
+	pr_sawf_dbg("cfg->msdu_ttl %d", sla_cfg->msdu_ttl);
+	pr_sawf_dbg("cfg->msdu_rate_loss %d", sla_cfg->msdu_rate_loss);
+	pr_sawf_dbg("cfg->packet_error_rate %d", sla_cfg->packet_error_rate);
+	pr_sawf_dbg("cfg->mcs_min_threshold %d", sla_cfg->mcs_min_threshold);
+	pr_sawf_dbg("cfg->mcs_max_threshold %d", sla_cfg->mcs_max_threshold);
+	pr_sawf_dbg("cfg->retries_threshold %d", sla_cfg->retries_threshold);
 	return 0;
 }
 
@@ -487,6 +606,7 @@ void telemetry_compute_tx_stats(struct telemetry_sawf_tx *sawf_tx_stats,
 
 	sawf_tx_stats->retries_mcs_stats.total_retries_count = msduq_tx_stats->total_retries_count;
 	sawf_tx_stats->retries_mcs_stats.tx_failed = msduq_tx_stats->tx_failed;
+	sawf_tx_stats->retries_mcs_stats.retry_count = msduq_tx_stats->retry_count;
 	for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
 		for (mcs_index = 0; mcs_index < TELEMETRY_MAX_MCS; mcs_index++) {
 			sawf_tx_stats->retries_mcs_stats.packet_type[pkt_type_index].mcs_count[mcs_index] =
@@ -731,11 +851,15 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t threshold;
 	struct telemetry_msduq_tx_stats msduq_tx_stats = {0};
 	uint8_t pkt_type_index, mcs_index;
+	uint8_t mcs_min_threshold;
+	uint8_t mcs_max_threshold;
+	bool mcs_breach = false;
 	struct telemetry_sawf_tx *sawf_tx_stats;
 	uint32_t curr_tx_failed;
 	uint32_t curr_tx_count;
 	uint32_t last_total_retries_count;
 	struct telemetry_pkt_type last_packet_type_mcs[TELEMETRY_DOT11_MAX] = {0};
+	uint32_t last_retry_count;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
 	if (!sawf_ctx) {
@@ -769,6 +893,8 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	curr_tx_count = tx_cnt - tput->last_count;
 	last_total_retries_count = msduq_tx_stats.total_retries_count -
 				   sawf_tx_stats->retries_mcs_stats.total_retries_count;
+	last_retry_count = msduq_tx_stats.retry_count -
+			   sawf_tx_stats->retries_mcs_stats.retry_count;
 	tput->last_count = tx_cnt;
 	for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
 		for (mcs_index = 0; mcs_index < TELEMETRY_MAX_MCS; mcs_index++) {
@@ -781,6 +907,13 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	telemetry_compute_tx_stats(sawf_tx_stats,
 				   &msduq_tx_stats,
 				   tx_cnt, eg_rate);
+
+	sawf_tx_stats->per_retries_stats.packet_error_rate =
+		div_u64((last_total_retries_count * 100),
+			(last_total_retries_count + curr_tx_count));
+	sawf_tx_stats->per_retries_stats.retries_percentage =
+		div_u64((last_retry_count * 100),
+			curr_tx_count);
 
 	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids))
 		return 0;
@@ -823,6 +956,82 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			telemetry_notify_breach(peer, svc_id,
 						queue, false,
 					        SAWF_PARAM_MAX_THROUGHPUT);
+		}
+	}
+
+	threshold = sla_param->packet_error_rate;
+	if (threshold && sla_detect->packet_error_rate) {
+		if (sawf_tx_stats->per_retries_stats.packet_error_rate >
+			100 - threshold) {
+			pr_sawf_err("SLA packet error rate Breach Detected peer service ID:%d",
+				    svc_id);
+			pr_sawf_err("Configured packet_error_rate: %d",
+				    sla_param->packet_error_rate);
+			pr_sawf_err("packet error rate: %llu",
+				    sawf_tx_stats->per_retries_stats.packet_error_rate);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_PACKET_ERROR_RATE);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_PACKET_ERROR_RATE);
+		}
+	}
+
+	threshold = sla_param->retries_threshold;
+	if (threshold && sla_detect->retries_threshold) {
+		if (sawf_tx_stats->per_retries_stats.retries_percentage >
+			100 - threshold) {
+			pr_sawf_err("SLA retries percentage Breach Detected peer service ID:%d",
+				    svc_id);
+			pr_sawf_err("Configured retries percentage: %d",
+				    sla_param->retries_threshold);
+			pr_sawf_err("retries percentage: %llu",
+				    sawf_tx_stats->per_retries_stats.retries_percentage);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_RETRIES_PERCENTAGE);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_RETRIES_PERCENTAGE);
+		}
+	}
+
+	mcs_min_threshold = sla_param->mcs_min_threshold;
+	mcs_max_threshold = sla_param->mcs_max_threshold;
+	if (mcs_min_threshold && mcs_max_threshold &&
+	    sla_detect->mcs_min_threshold &&
+	    sla_detect->mcs_max_threshold) {
+		for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
+			for (mcs_index = 0; mcs_index < mcs_min_threshold; mcs_index++) {
+				if (last_packet_type_mcs[pkt_type_index].mcs_count[mcs_index] > 0) {
+					mcs_breach = true;
+				}
+				if (mcs_breach)
+					break;
+			}
+			for (mcs_index = mcs_max_threshold + 1; mcs_index < TELEMETRY_MAX_MCS && !mcs_breach; mcs_index++) {
+				if (last_packet_type_mcs[pkt_type_index].mcs_count[mcs_index] > 0) {
+					mcs_breach = true;
+				}
+				if (mcs_breach)
+					break;
+			}
+			if (mcs_breach)
+				break;
+		}
+		if (mcs_breach) {
+			pr_sawf_err("SLA mcs bound Breach Detected peer service ID:%d",
+				    svc_id);
+			telemetry_notify_breach(peer, svc_id,
+						queue, true,
+						SAWF_PARAM_MCS_BOUND);
+		} else {
+			telemetry_notify_breach(peer, svc_id,
+						queue, false,
+						SAWF_PARAM_MCS_BOUND);
 		}
 	}
 
@@ -1338,7 +1547,9 @@ void telemetry_detect_sla_per_sec(struct timer_list *timer)
 
 	sla_detect = &sawf_ctx->sla_detect.sla_detect[SAWF_SLA_DETECT_PER_SECOND];
 
-	if (sla_detect->min_thruput_rate || sla_detect->max_thruput_rate) {
+	if (sla_detect->min_thruput_rate || sla_detect->max_thruput_rate ||
+	    sla_detect->packet_error_rate || (sla_detect->mcs_min_threshold &&
+	    sla_detect->mcs_max_threshold) || sla_detect->retries_threshold) {
 		telemetry_detect_breach(SAWF_SLA_DETECT_PER_SECOND);
 	}
 

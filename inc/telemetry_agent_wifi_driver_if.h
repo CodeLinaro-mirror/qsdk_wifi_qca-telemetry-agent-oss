@@ -229,6 +229,7 @@ struct telemetry_pkt_type {
 
 struct telemetry_msduq_tx_stats {
 	uint32_t tx_failed;
+	uint32_t retry_count;
 	uint32_t total_retries_count;
 	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
 };
@@ -295,6 +296,16 @@ struct telemetry_agent_ops {
                               uint8_t service_interval,
                               uint8_t delay_bound, uint8_t msdu_ttl,
                               uint8_t msdu_rate_loss);
+    int (* sawf_set_sla_config) (uint8_t svc_id, uint8_t min_thruput_rate,
+                                 uint8_t max_thruput_rate,
+                                 uint8_t burst_size,
+                                 uint8_t service_interval,
+                                 uint8_t delay_bound, uint8_t msdu_ttl,
+                                 uint8_t msdu_rate_loss,
+                                 uint8_t packet_error_rate,
+                                 uint8_t mcs_min_threshold,
+                                 uint8_t mcs_max_threshold,
+                                 uint8_t retries_threshold);
     int (* sawf_set_svclass_cfg) (bool enable, uint8_t svclass_id,
                                   uint32_t min_thruput_rate,
                                   uint32_t max_thruput_rate,
@@ -311,6 +322,18 @@ struct telemetry_agent_ops {
                                    uint8_t delay_bound,
                                    uint8_t msdu_ttl,
                                    uint8_t msdu_rate_loss);
+    int (* sawf_set_sla_detect_config) (uint8_t detect_type,
+                                        uint8_t min_thruput_rate,
+                                        uint8_t max_thruput_rate,
+                                        uint8_t burst_size,
+                                        uint8_t service_interval,
+                                        uint8_t delay_bound,
+                                        uint8_t msdu_ttl,
+                                        uint8_t msdu_rate_loss,
+                                        uint8_t packet_error_rate,
+                                        uint8_t mcs_min_threshold,
+                                        uint8_t mcs_max_threshold,
+                                        uint8_t retries_threshold);
     int (* sawf_push_delay) (void *telemetry_sawf_ctx, uint8_t tid,
                              uint8_t queue, uint64_t pass,
                              uint64_t fail);
