@@ -74,9 +74,25 @@ struct agent_derived_peer_stats {
 	uint32_t avg_counter;
 };
 
+struct agent_peer_per_retries {
+	uint64_t packet_error_rate;
+	uint64_t retries_percentage;
+};
+
+struct agent_peer_sla_threshold {
+	uint32_t packet_error_rate;
+	uint32_t retries_threshold;
+	uint32_t mcs_min_threshold;
+	uint32_t mcs_max_threshold;
+	uint32_t min_thruput_rate;
+	uint32_t max_thruput_rate;
+};
+
 struct agent_telemetry_peer_tx_ext_stats {
 	struct agent_peer_tx_ext_stats raw_peer_stats;
 	struct agent_derived_peer_stats derived_peer_stats;
+	struct agent_peer_per_retries peer_per_retries_stats;
+	struct agent_peer_sla_threshold peer_tx_stats_threshold;
 };
 
 struct agent_peer_db {

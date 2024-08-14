@@ -273,6 +273,13 @@ struct telemetry_agent_ops {
     int (*agent_get_admctrl_pdev_stats) (void *obj, struct admctrl_link_iface_stats_obj *stats);
     int (*agent_get_admctrl_peer_stats) (void *obj, struct admctrl_peer_iface_stats_obj *stats);
     int (*agent_get_peer_tx_stats) (void *obj, void *stats);
+    int (*agent_peer_sla_stats_threshold) (uint8_t *peer_mac,
+					   uint32_t packet_error_rate,
+					   uint32_t retries_threshold,
+					   uint32_t mcs_min_threshold,
+					   uint32_t mcs_max_threshold,
+					   uint32_t min_thruput_rate,
+					   uint32_t max_thruput_rate);
     int (*agent_get_pext_stats_enabled_flag) (void *obj, void *flag);
 
     /* SAWF ops */
