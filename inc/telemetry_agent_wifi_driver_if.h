@@ -229,7 +229,18 @@ struct telemetry_pkt_type {
 
 struct telemetry_msduq_tx_stats {
 	uint32_t tx_failed;
+	uint32_t retry_count;
 	uint32_t total_retries_count;
+	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
+};
+
+struct agent_peer_tx_ext_stats {
+	uint32_t avg_ack_rssi;
+	uint32_t tx_failed;
+	uint32_t retries;
+	uint32_t total_retries;
+	uint64_t tx_cnt;
+	uint64_t tx_bytes;
 	struct telemetry_pkt_type packet_type[TELEMETRY_DOT11_MAX];
 };
 
@@ -261,6 +272,15 @@ struct telemetry_agent_ops {
     int (*agent_get_erp_pdev_stats) (void *obj, struct erp_link_iface_stats_obj *stats);
     int (*agent_get_admctrl_pdev_stats) (void *obj, struct admctrl_link_iface_stats_obj *stats);
     int (*agent_get_admctrl_peer_stats) (void *obj, struct admctrl_peer_iface_stats_obj *stats);
+    int (*agent_get_peer_tx_stats) (void *obj, void *stats);
+    int (*agent_peer_sla_stats_threshold) (uint8_t *peer_mac,
+					   uint32_t packet_error_rate,
+					   uint32_t retries_threshold,
+					   uint32_t mcs_min_threshold,
+					   uint32_t mcs_max_threshold,
+					   uint32_t min_thruput_rate,
+					   uint32_t max_thruput_rate);
+    int (*agent_get_pext_stats_enabled_flag) (void *obj, void *flag);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
@@ -283,6 +303,16 @@ struct telemetry_agent_ops {
                               uint8_t service_interval,
                               uint8_t delay_bound, uint8_t msdu_ttl,
                               uint8_t msdu_rate_loss);
+    int (* sawf_set_sla_config) (uint8_t svc_id, uint8_t min_thruput_rate,
+                                 uint8_t max_thruput_rate,
+                                 uint8_t burst_size,
+                                 uint8_t service_interval,
+                                 uint8_t delay_bound, uint8_t msdu_ttl,
+                                 uint8_t msdu_rate_loss,
+                                 uint8_t packet_error_rate,
+                                 uint8_t mcs_min_threshold,
+                                 uint8_t mcs_max_threshold,
+                                 uint8_t retries_threshold);
     int (* sawf_set_svclass_cfg) (bool enable, uint8_t svclass_id,
                                   uint32_t min_thruput_rate,
                                   uint32_t max_thruput_rate,
@@ -299,6 +329,18 @@ struct telemetry_agent_ops {
                                    uint8_t delay_bound,
                                    uint8_t msdu_ttl,
                                    uint8_t msdu_rate_loss);
+    int (* sawf_set_sla_detect_config) (uint8_t detect_type,
+                                        uint8_t min_thruput_rate,
+                                        uint8_t max_thruput_rate,
+                                        uint8_t burst_size,
+                                        uint8_t service_interval,
+                                        uint8_t delay_bound,
+                                        uint8_t msdu_ttl,
+                                        uint8_t msdu_rate_loss,
+                                        uint8_t packet_error_rate,
+                                        uint8_t mcs_min_threshold,
+                                        uint8_t mcs_max_threshold,
+                                        uint8_t retries_threshold);
     int (* sawf_push_delay) (void *telemetry_sawf_ctx, uint8_t tid,
                              uint8_t queue, uint64_t pass,
                              uint64_t fail);
