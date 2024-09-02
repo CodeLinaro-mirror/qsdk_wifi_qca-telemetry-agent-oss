@@ -674,7 +674,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint64_t in_bytes = 0, in_cnt = 0;
 	uint64_t tx_bytes = 0, tx_cnt = 0;
 	uint64_t in_rate = 0, eg_rate = 0;
-	uint32_t throughput;
+	uint64_t throughput;
 	uint32_t threshold;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
@@ -711,7 +711,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		     eg_rate < div_u64((in_rate * threshold), 100))) {
 			pr_sawf_err("SLA Min Throughput Breach Detected peer service ID:%d",
 				    svc_id);
-			pr_sawf_err("Configured Min Throughput: %d", throughput);
+			pr_sawf_err("Configured Min Throughput: %llu", throughput);
 			pr_sawf_err("Ingress Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,
@@ -730,7 +730,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		    eg_rate < div_u64((throughput * threshold), 100)) {
 			pr_sawf_err("SLA Max Throughput Breach Detected peer service ID:%d",
 				    svc_id);
-			pr_sawf_err("Configured Max Throughput: %d", throughput);
+			pr_sawf_err("Configured Max Throughput: %llu", throughput);
 			pr_sawf_err("Ingres Throughput: %d", tput->in_rate);
 			pr_sawf_err("Egress Throughput: %d", tput->eg_rate);
 			telemetry_notify_breach(peer, svc_id,

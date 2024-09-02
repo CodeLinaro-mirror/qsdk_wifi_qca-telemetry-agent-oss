@@ -36,7 +36,7 @@ agent and APP */
 #define ERP_MAX_SUB_BUFFERS 2
 #define ENERGY_SVC_MAX_SUB_BUFFERS 2
 #define RM_MAIN_MAX_SUB_BUFFERS 1
-#define STATS_FREQUECY  1000 /*in milli seconds */
+#define STATS_FREQUENCY  1000 /*in milli seconds */
 
 #define MAX_PDEV_LINKS_DB 3
 #define MAX_SOCS_DB 5
@@ -144,6 +144,8 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_init_energysvc;
 	/* delayed work periodic for energy service */
 	struct delayed_work stats_work_periodic_energysvc;
+	/* delyed work for dynamic service init */
+	struct delayed_work stats_work_dynamic_init_main;
 };
 
 struct telemetry_agent_object {
@@ -160,6 +162,8 @@ struct telemetry_agent_object {
 	struct agent_telemtry_db agent_db;
 	uint32_t debug_mask;
 	struct agent_rm_telemetry rm_telemetry;
+	/* lock for agent_db */
+	spinlock_t agent_lock;
 };
 
 
