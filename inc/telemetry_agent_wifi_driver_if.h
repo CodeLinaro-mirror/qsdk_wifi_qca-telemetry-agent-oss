@@ -354,6 +354,10 @@ struct telemetry_agent_ops {
     int (* sawf_pull_rate) (void *telemetry_sawf_ctx, uint8_t tid,
                             uint8_t queue, uint32_t *egress_rate,
                             uint32_t *ingress_rate);
+    int (* sawf_pull_tx_rate) (void *telemetry_sawf_ctx, uint8_t tid,
+                               uint8_t queue,
+                               uint32_t *min_tput, uint32_t *max_tput,
+                               uint32_t *avg_tput, uint32_t *per);
     int (* sawf_pull_mov_avg) (void *telemetry_sawf_ctx, uint8_t tid,
                                uint8_t queue, uint32_t *nwdelay_avg,
                                uint32_t *swdelay_avg, uint32_t *hwdelay_avg);

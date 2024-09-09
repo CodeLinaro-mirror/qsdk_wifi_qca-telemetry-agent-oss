@@ -1429,6 +1429,25 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	return 0;
 }
 
+int telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
+			    uint32_t *min_tput, uint32_t *max_tput,
+			    uint32_t *avg_tput, uint32_t *per)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
+	struct telemetry_sawf_stats *stats;
+	if (!peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return -1;
+	}
+	stats = &peer_ctx->stats[queue];
+
+	*min_tput = stats->tx.throughput.min_throughput;
+	*max_tput = stats->tx.throughput.max_throughput;
+	*avg_tput = stats->tx.throughput.avg_throughput;
+	*per = stats->tx.per_retries_stats.packet_error_rate;
+
+	return 0;
+}
 int telemetry_sawf_pull_mov_avg(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 				uint32_t *nwdelay_avg, uint32_t *swdelay_avg,
 				uint32_t *hwdelay_avg)

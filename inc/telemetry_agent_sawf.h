@@ -701,6 +701,23 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 			    uint32_t *egress_rate, uint32_t *ingress_rate);
 
 /**
+ * telemetry_sawf_get_tx_rate - Get rate stats
+ * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
+ * @tid: tid no
+ * @queue: queue no
+ * @: pointer to min throughput
+ * @: pointer to max throughput
+ * @: pointer to average throughput
+ * @: pointer to Tx PER
+ *
+ * Return: 0 on success
+ */
+
+int telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
+			    uint32_t *min_tput, uint32_t *max_tput,
+			    uint32_t *avg_tput, uint32_t *per);
+
+/**
  * telemetry_sawf_pull_mov_avg - Get moving window average stats
  * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
  * @tid: tid no
