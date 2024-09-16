@@ -1431,7 +1431,7 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 
 int telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 			    uint32_t *min_tput, uint32_t *max_tput,
-			    uint32_t *avg_tput, uint32_t *per)
+			    uint32_t *avg_tput, uint32_t *per, uint32_t *retries_pct)
 {
 	struct telemetry_sawf_peer_ctx *peer_ctx = telemetry_ctx;
 	struct telemetry_sawf_stats *stats;
@@ -1445,6 +1445,7 @@ int telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 	*max_tput = stats->tx.throughput.max_throughput;
 	*avg_tput = stats->tx.throughput.avg_throughput;
 	*per = stats->tx.per_retries_stats.packet_error_rate;
+	*retries_pct = stats->tx.per_retries_stats.retries_percentage;
 
 	return 0;
 }
