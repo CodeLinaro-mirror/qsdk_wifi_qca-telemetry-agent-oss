@@ -438,9 +438,9 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 					peer_db->tx_mpdu_retried = peer_stats.tx_mpdu_retried;
 					peer_db->rx_mpdu_total = peer_stats.rx_mpdu_total;
 					peer_db->rx_mpdu_retried = peer_stats.rx_mpdu_retried;
-					rfs_peer_stats->rssi = peer_stats.rssi;
+					rfs_peer_stats->snr = peer_stats.rssi;
 					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
-					rfs_peer_stats->eff_chan_bandwidth = peer_db->eff_chan_bw;
+					rfs_peer_stats->eff_chan_bw = peer_db->eff_chan_bw;
 					num_mlo_peers++;
 				}
 
@@ -587,7 +587,7 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init) {
 					rfs_peer_stats->peer_flags = peer_stats.peer_flags;
 
 					for (k = 0; k < SAWF_MAX_QUEUES; k++) {
-						rfs_msduq_info = &rfs_peer_stats->msduq_info[k];
+						rfs_msduq_info = &rfs_peer_stats->msduq[k];
 						msduq_info = &peer_stats.msduq_info[k];
 
 						rfs_msduq_info->is_used = msduq_info->is_used;
