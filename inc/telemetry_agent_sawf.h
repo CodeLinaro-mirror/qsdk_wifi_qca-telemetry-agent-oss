@@ -709,13 +709,15 @@ int telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
  * @: pointer to max throughput
  * @: pointer to average throughput
  * @: pointer to Tx PER
+ * @: pointer to TX retries percentage
  *
  * Return: 0 on success
  */
 
 int telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid, uint8_t queue,
 			    uint32_t *min_tput, uint32_t *max_tput,
-			    uint32_t *avg_tput, uint32_t *per);
+			    uint32_t *avg_tput, uint32_t *per,
+			    uint32_t *retries_pct);
 
 /**
  * telemetry_sawf_pull_mov_avg - Get moving window average stats
