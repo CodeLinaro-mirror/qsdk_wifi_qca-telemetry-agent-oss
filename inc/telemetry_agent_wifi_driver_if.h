@@ -281,6 +281,12 @@ struct telemetry_agent_ops {
 					   uint32_t min_thruput_rate,
 					   uint32_t max_thruput_rate);
     int (*agent_get_pext_stats_enabled_flag) (void *obj, void *flag);
+    int (*agent_pull_tx_peer_stats) (uint8_t *peer_mac,
+				     uint32_t *min_tput,
+				     uint32_t *max_tput,
+				     uint32_t *avg_tput,
+				     uint32_t *per,
+				     uint32_t *retries_pct);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,

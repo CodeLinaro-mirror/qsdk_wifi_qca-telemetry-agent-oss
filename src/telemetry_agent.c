@@ -1842,6 +1842,56 @@ static int telemetry_peer_sla_detect(uint8_t *peer_mac,
 
 }
 
+static int telemetry_agent_pull_tx_peer_stats(uint8_t *peer_mac,
+					      uint32_t *min_tput,
+					      uint32_t *max_tput,
+					      uint32_t *avg_tput,
+					      uint32_t *per,
+					      uint32_t *retries_pct)
+{
+	int num_socs_index, num_pdevs_index;
+
+	struct agent_soc_db *psoc_db = NULL;
+	struct agent_pdev_db *pdev_db = NULL;
+	struct agent_peer_db *peer_db = NULL;
+	struct list_head *node;
+
+	spin_lock_bh(&g_agent_obj.agent_lock);
+	for (num_socs_index = 0; num_socs_index < MAX_SOCS_DB; num_socs_index++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[num_socs_index];
+		if (!psoc_db->psoc_obj_ptr)
+			continue;
+
+		for (num_pdevs_index = 0; num_pdevs_index < MAX_PDEV_LINKS_DB; num_pdevs_index++) {
+			pdev_db = &psoc_db->pdev_db[num_pdevs_index];
+			if (!pdev_db->pdev_obj_ptr)
+				continue;
+
+			spin_lock_bh(&pdev_db->peer_db_lock);
+			list_for_each(node, &pdev_db->peer_db_list) {
+				peer_db = list_entry(node, struct agent_peer_db,
+						     node);
+				if (peer_db &&
+				   (telemetry_mac_addr_cmp(peer_mac, peer_db->peer_mac_addr)) == 0) {
+					*min_tput = peer_db->peer_stats.derived_peer_stats.min_throughput;
+					*max_tput = peer_db->peer_stats.derived_peer_stats.max_throughput;
+					*avg_tput = peer_db->peer_stats.derived_peer_stats.avg_throughput;
+					*per = peer_db->peer_stats.peer_per_retries_stats.packet_error_rate;
+					*retries_pct = peer_db->peer_stats.peer_per_retries_stats.retries_percentage;
+					spin_unlock_bh(&pdev_db->peer_db_lock);
+					spin_unlock_bh(&g_agent_obj.agent_lock);
+					return 0;
+				}
+			}
+			spin_unlock_bh(&pdev_db->peer_db_lock);
+		}
+	}
+	spin_unlock_bh(&g_agent_obj.agent_lock);
+
+	return 0;
+
+}
+
 struct telemetry_agent_ops agent_ops = {
 	agent_psoc_create_handler:telemetry_agent_psoc_create_handler,
 	agent_psoc_destroy_handler:telemetry_agent_psoc_destroy_handler,
@@ -1855,6 +1905,7 @@ struct telemetry_agent_ops agent_ops = {
 	agent_notify_emesh_event:telemetry_agent_notifiy_emesh_init_deinit,
 	agent_dynamic_app_init_deinit_notify:telemetry_agent_dynamic_app_init_deinit_notify,
 	agent_peer_sla_stats_threshold:telemetry_peer_sla_detect,
+	agent_pull_tx_peer_stats: telemetry_agent_pull_tx_peer_stats,
 
 	/* SAWF-ops */
 	sawf_set_sla_dtct_cfg: telemetry_sawf_set_sla_detect_cfg,
