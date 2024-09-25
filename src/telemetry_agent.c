@@ -873,6 +873,8 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 				sizeof(rfs_link_stats->link_airtime));
 			rfs_link_stats->freetime = pdev_stats.freetime;
 #endif
+			rfs_link_stats->freq = pdev_stats.freq;
+
 			rfs_link_stats->is_mon_enabled = pdev_stats.is_mon_enabled;
 
 			num_peers = 0;
