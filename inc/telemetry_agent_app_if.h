@@ -25,7 +25,14 @@
 #define WLAN_VENDOR_EHTCAP_TXRX_MCS_NSS_IDX_MAX 4
 #define MAX_T2LM_INFO 2
 #define WLAN_AC_MAX 4
+
+#ifdef CONFIG_KASAN
+/* reducing for KASAN to avoid bloating issue */
+#define MAX_PEERS 100
+#else
 #define MAX_PEERS 512
+#endif
+
 #define MU_MAX_USERS 37
 #define MUMIMO_MAX_USERS 8
 #define SAWF_MAXQ_PTID 2
