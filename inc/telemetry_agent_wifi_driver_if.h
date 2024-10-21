@@ -149,6 +149,7 @@ struct agent_link_iface_stats_obj {
     uint8_t ul_payload_ratio[WLAN_AC_MAX];
     uint32_t avg_chan_latency[WLAN_AC_MAX];
     bool is_mon_enabled;
+    uint16_t freq;
 };
 
 struct emesh_peer_iface_stats_obj {
@@ -281,6 +282,12 @@ struct telemetry_agent_ops {
 					   uint32_t min_thruput_rate,
 					   uint32_t max_thruput_rate);
     int (*agent_get_pext_stats_enabled_flag) (void *obj, void *flag);
+    int (*agent_pull_tx_peer_stats) (uint8_t *peer_mac,
+				     uint32_t *min_tput,
+				     uint32_t *max_tput,
+				     uint32_t *avg_tput,
+				     uint32_t *per,
+				     uint32_t *retries_pct);
 
     /* SAWF ops */
     void * (*sawf_alloc_peer) (void *sawf_ctx, void *sawf_stats_ctx,
@@ -357,7 +364,8 @@ struct telemetry_agent_ops {
     int (* sawf_pull_tx_rate) (void *telemetry_sawf_ctx, uint8_t tid,
                                uint8_t queue,
                                uint32_t *min_tput, uint32_t *max_tput,
-                               uint32_t *avg_tput, uint32_t *per);
+                               uint32_t *avg_tput, uint32_t *per,
+			       uint32_t *retries_pct);
     int (* sawf_pull_mov_avg) (void *telemetry_sawf_ctx, uint8_t tid,
                                uint8_t queue, uint32_t *nwdelay_avg,
                                uint32_t *swdelay_avg, uint32_t *hwdelay_avg);
