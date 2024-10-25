@@ -610,6 +610,14 @@ int telemetry_sawf_clear_msdu_queue_info(void *telemetry_ctx,
 void telemetry_sawf_free_peer(void *telemetry_peer_ctx);
 
 /**
+ * telemetry_sawf_peer_stats_reset - Reset peer telemetry stats
+ * @telemetry_peer_ctx: telemetry-peer context
+ *
+ * Return: none
+ */
+void telemetry_sawf_peer_stats_reset(void *telemetry_peer_ctx);
+
+/**
  * telemetry_sawf_update_peer_delay - Update delay-stats
  * @telemetry_ctx: pointer to sawf-peer-telemetry ctx
  * @tid: tid no

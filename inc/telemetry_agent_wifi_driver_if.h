@@ -294,6 +294,7 @@ struct telemetry_agent_ops {
                                uint8_t *mac_addr,
                                uint8_t svc_id, uint8_t hostq_id);
     void (* sawf_free_peer) (void *telemetry_sawf_ctx);
+    void (* sawf_peer_stats_reset) (void *telemetry_ctx);
     int (* sawf_updt_queue_info) (void *telemetry_sawf_ctx,
                                   uint8_t svc_id,
                                   uint8_t tid, uint8_t msduq_idx);

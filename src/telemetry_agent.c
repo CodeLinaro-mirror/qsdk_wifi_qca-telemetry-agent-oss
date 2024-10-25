@@ -1920,6 +1920,7 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_update_msduq_info: telemetry_sawf_update_msdu_queue_info,
 	sawf_clear_msduq_info: telemetry_sawf_clear_msdu_queue_info,
 	sawf_free_peer: telemetry_sawf_free_peer,
+	sawf_peer_stats_reset: telemetry_sawf_peer_stats_reset,
 	sawf_push_delay: telemetry_sawf_update_peer_delay,
 	sawf_push_delay_mvng: telemetry_sawf_update_peer_delay_mov_avg,
 	sawf_push_msdu_drop: telemetry_sawf_update_msdu_drop,

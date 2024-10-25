@@ -561,6 +561,26 @@ void telemetry_sawf_free_peer(void *telemetry_ctx)
 	kfree(peer_ctx);
 }
 
+void telemetry_sawf_peer_stats_reset(void *telemetry_peer_ctx)
+{
+	struct telemetry_sawf_peer_ctx *peer_ctx;
+	struct telemetry_sawf_stats *sawf_stats;
+	uint8_t idx;
+
+	if (!telemetry_peer_ctx) {
+		pr_sawf_err("SAWF peer ctx is null");
+		return;
+	}
+
+	peer_ctx = telemetry_peer_ctx;
+
+	for (idx = 0; idx < SAWF_MAX_QUEUES; idx++) {
+		sawf_stats = &peer_ctx->stats[idx];
+		memset(sawf_stats, 0,
+		       sizeof(struct telemetry_sawf_stats));
+	}
+}
+
 static int
 telemetry_sawf_get_msduq_tx_stats(struct telemetry_sawf_peer_ctx *peer,
 		struct telemetry_msduq_tx_stats *msduq_tx_stats,
