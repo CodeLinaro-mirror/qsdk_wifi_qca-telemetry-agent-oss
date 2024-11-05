@@ -100,6 +100,7 @@ struct agent_peer_db {
 	void *peer_obj_ptr;
 	void *pdev_obj_ptr;
 	void *psoc_obj_ptr;
+	uint16_t peer_id;
 	uint8_t peer_mac_addr[6];
 	uint32_t tx_mpdu_retried;
 	uint32_t tx_mpdu_total;
