@@ -1593,7 +1593,7 @@ bool telemetry_get_pext_stats_config(struct agent_soc_db *soc_db)
 
 void telemetry_peer_stats_timer_stop(void)
 {
-	del_timer(&g_agent_obj.peer_stats_timer);
+	del_timer_sync(&g_agent_obj.peer_stats_timer);
 }
 
 static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj *peer_obj)
