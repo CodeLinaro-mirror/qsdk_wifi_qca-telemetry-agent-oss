@@ -390,6 +390,7 @@ struct agent_peer_init_stats {
 	uint8_t mld_mac_addr[6];      /* peer MLD mac */
 	uint8_t link_mac_addr[6];     /* peer MLD link mac */
 	uint8_t is_assoc_link;
+	int ifindex;
 	uint8_t vdev_id;              /* peer vdev id */
 	uint8_t ap_mld_addr[6];       /* AP MLD mac */
 	struct link_map_of_tids t2lm_info[MAX_T2LM_INFO]; /* T2LM mapping */

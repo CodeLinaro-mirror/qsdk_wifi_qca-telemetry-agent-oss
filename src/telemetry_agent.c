@@ -553,6 +553,7 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init) {
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
 					memcpy(&rfs_peer_stats->mld_mac_addr[0],
 							peer_stats.peer_mld_mac, 6);
+					rfs_peer_stats->ifindex = peer_stats.ifindex;
 					memcpy(&rfs_peer_stats->link_mac_addr[0],
 							peer_stats.peer_link_mac, 6);
                     /* T2LM Info */

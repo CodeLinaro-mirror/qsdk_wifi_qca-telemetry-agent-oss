@@ -92,6 +92,7 @@ struct agent_peer_iface_init_obj {
 	uint8_t peer_link_mac[6];
 	uint8_t ap_mld_addr[6];
 	uint8_t is_assoc_link;
+	int ifindex;
 	uint8_t vdev_id;
 	uint8_t bw;
 	uint16_t freq;
