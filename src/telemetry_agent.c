@@ -1642,10 +1642,6 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0]));
 
-	if (!pdev_db->num_peers && telemetry_get_pext_stats_config(psoc_db)) {
-		telemetry_peer_stats_timer_init();
-	}
-
 	pdev_db->num_peers++;
 	spin_unlock_bh(&pdev_db->peer_db_lock);
 	spin_unlock_bh(&g_agent_obj.agent_lock);
@@ -1743,10 +1739,6 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		ta_print_error("%s: Node not found\n", __func__);
 	}
 	pdev_db->num_peers--;
-
-	if (!pdev_db->num_peers && telemetry_get_pext_stats_config(psoc_db)) {
-		telemetry_peer_stats_timer_stop();
-	}
 
 	spin_unlock_bh(&pdev_db->peer_db_lock);
 	spin_unlock_bh(&g_agent_obj.agent_lock);
