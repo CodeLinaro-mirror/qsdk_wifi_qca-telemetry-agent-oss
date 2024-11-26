@@ -195,6 +195,7 @@ struct telemetry_agent_object {
 	/* lock for agent_db */
 	spinlock_t agent_lock;
 	struct timer_list peer_stats_timer;
+	bool peer_stats_timer_enabled;
 };
 
 
