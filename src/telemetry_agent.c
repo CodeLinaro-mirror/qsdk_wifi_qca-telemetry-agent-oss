@@ -1593,7 +1593,10 @@ bool telemetry_get_pext_stats_config(struct agent_soc_db *soc_db)
 
 void telemetry_peer_stats_timer_stop(void)
 {
-	del_timer_sync(&g_agent_obj.peer_stats_timer);
+	if (g_agent_obj.peer_stats_timer_enabled) {
+		del_timer_sync(&g_agent_obj.peer_stats_timer);
+		g_agent_obj.peer_stats_timer_enabled = false;
+	}
 }
 
 static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj *peer_obj)
@@ -1641,6 +1644,13 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 			peer_db->psoc_obj_ptr, peer_obj->psoc_id,
 			peer_db->pdev_obj_ptr, peer_obj->pdev_id,
 			peer_db->peer_obj_ptr, print_mac_addr(&peer_db->peer_mac_addr[0]));
+
+	if (telemetry_get_pext_stats_config(psoc_db)) {
+		if (!g_agent_obj.peer_stats_timer_enabled) {
+			telemetry_peer_stats_timer_init();
+			g_agent_obj.peer_stats_timer_enabled = true;
+		}
+	}
 
 	pdev_db->num_peers++;
 	spin_unlock_bh(&pdev_db->peer_db_lock);
@@ -2069,6 +2079,7 @@ static int telemetry_agent_init_module(void)
 
 static void telemetry_agent_exit_module(void)
 {
+	telemetry_peer_stats_timer_stop();
 	telemetry_agent_remove_workqueues_basic();
 	telemetry_agent_remove_workqueues_enhanched();
 	telemetry_agent_deinit_relayfs(&g_agent_obj);
