@@ -899,6 +899,9 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 						peer_stats_tx.tx_airtime_consumption,
 						sizeof(rfs_peer_stats->tx_airtime_consumption));
 					rfs_peer_stats->sla_mask = peer_stats.sla_mask;
+#ifndef WLAN_CONFIG_TELEMETRY_AGENT
+					rfs_peer_stats->snr = peer_stats.rssi;
+#endif
 					num_peers++;
 				}
 
