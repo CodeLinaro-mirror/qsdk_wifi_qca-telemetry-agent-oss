@@ -1031,7 +1031,9 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 	struct delayed_work *work_init;
 	struct delayed_work *work_periodic;
 	struct delayed_work *work_dynamic_init;
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	uint8_t id;
+#endif
 
 	ta_print_debug("Agent> %s event: %d for service %d \n", __func__, event, service_id);
 	switch(event) {
@@ -1044,6 +1046,7 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 				schedule_delayed_work(work_init, msecs_to_jiffies(1000));
 			break;
 		case AGENT_NOTIFY_EVENT_DEINIT:
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			/*Deinit is explicitly called for RM_MAIN_SERVICE.
 			 *Deinit all the initialized services too*/
 			for (id = 0; id < RM_MAX_SERVICE; id++) {
@@ -1062,6 +1065,22 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 				if (work_periodic)
 					cancel_delayed_work_sync(work_periodic);
 			}
+#else
+			telemetry_agent_rm_get_delayed_work_info(&rfs_channel,
+								 &work_init,
+								 &work_periodic,
+								 &work_dynamic_init,
+								 service_id);
+			g_agent_obj.rm_telemetry.app_init[service_id] = 0;
+			if (rfs_channel)
+				relay_reset(rfs_channel);
+			if (work_init)
+				cancel_delayed_work_sync(work_init);
+			if (work_dynamic_init)
+				cancel_delayed_work_sync(work_dynamic_init);
+			if (work_periodic)
+				cancel_delayed_work_sync(work_periodic);
+#endif
 			break;
 		default:
 			break;
