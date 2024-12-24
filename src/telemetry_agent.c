@@ -588,6 +588,7 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init) {
 						peer_stats.ap_mld_addr, 6);
 					rfs_peer_stats->disabled_link_bitmap = peer_stats.disabled_link_bitmap;
 					rfs_peer_stats->peer_flags = peer_stats.peer_flags;
+					rfs_peer_stats->phymode = peer_stats.phymode;
 
 					for (k = 0; k < SAWF_MAX_QUEUES; k++) {
 						rfs_msduq_info = &rfs_peer_stats->msduq[k];

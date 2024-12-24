@@ -102,6 +102,7 @@ struct agent_peer_iface_init_obj {
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
 	uint16_t peer_flags;
+	uint8_t phymode;
 	struct agent_msduq_info_iface_obj msduq_info[SAWF_MAX_QUEUES];
 };
 
