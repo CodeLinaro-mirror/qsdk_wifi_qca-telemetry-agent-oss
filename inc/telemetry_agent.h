@@ -100,6 +100,7 @@ struct agent_peer_db {
 	void *peer_obj_ptr;
 	void *pdev_obj_ptr;
 	void *psoc_obj_ptr;
+	uint16_t peer_id;
 	uint8_t peer_mac_addr[6];
 	uint32_t tx_mpdu_retried;
 	uint32_t tx_mpdu_total;
@@ -195,6 +196,7 @@ struct telemetry_agent_object {
 	/* lock for agent_db */
 	spinlock_t agent_lock;
 	struct timer_list peer_stats_timer;
+	bool peer_stats_timer_enabled;
 };
 
 

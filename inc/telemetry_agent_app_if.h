@@ -331,6 +331,9 @@ struct energysvc_peer_stats {
 	uint8_t peer_link_mac[6];
 	uint8_t airtime_consumption[WLAN_AC_MAX];
 	uint16_t tx_airtime_consumption[WLAN_AC_MAX];
+#ifndef WLAN_CONFIG_TELEMETRY_AGENT
+	int8_t snr;
+#endif /*!WLAN_CONFIG_TELEMETRY_AGENT */
 	uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
 };
 
@@ -443,6 +446,7 @@ enum rm_services {
 	RM_ADMCTRL_SERVICE,
 	RM_ENERGY_SERVICE,
 	RM_IFLI_PROXY_SERVICE,
+	RM_POWER_BOOST_SERVICE,
 	RM_MAX_SERVICE,
 };
 
