@@ -102,6 +102,7 @@ struct agent_peer_iface_init_obj {
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
 	uint16_t peer_flags;
+	uint8_t phymode;
 	struct agent_msduq_info_iface_obj msduq_info[SAWF_MAX_QUEUES];
 };
 
@@ -263,9 +264,16 @@ struct telemetry_agent_ops {
 		    		     enum rm_services service_id,
 				     uint8_t category);
     void (*agent_notify_emesh_event) (enum agent_notification_event);
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+    void (*agent_dynamic_app_init_deinit_notify) (enum agent_notification_event,
+                                    enum rm_services service_id,
+                                    uint64_t service_data,
+                                    bool is_container_app);
+#else
     void (*agent_dynamic_app_init_deinit_notify) (enum agent_notification_event,
                                     enum rm_services service_id,
                                     uint64_t service_data);
+#endif /* WLAN_CONFIG_TELEMETRY_AGENT */
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
     int (*agent_get_peer_info) (void *obj, struct agent_peer_iface_init_obj *stats);
