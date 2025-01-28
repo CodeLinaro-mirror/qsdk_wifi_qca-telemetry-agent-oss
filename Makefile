@@ -10,6 +10,7 @@ include $(obj)/$(DEPTH)/os/linux/Makefile-linux.common
 EXTRA_CFLAGS+= $(COPTS)
 ifneq ($(QCA_CBT_INSTRUMENTATION),1)
 EXTRA_CFLAGS += -Werror
+EXTRA_CFLAGS += -Wall
 endif
 endif
 
