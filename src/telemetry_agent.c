@@ -450,7 +450,6 @@ void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
 				continue;
 
 			rfs_link_stats = &rfs_soc_stats->link_stats[num_pdevs];
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 			g_agent_ops->agent_get_erp_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
 			rfs_link_stats->tx_data_msdu_cnt = pdev_stats.tx_data_msdu_cnt;
 			rfs_link_stats->rx_data_msdu_cnt = pdev_stats.rx_data_msdu_cnt;
@@ -458,7 +457,6 @@ void telemetry_agent_stats_work_periodic_erp(struct work_struct *work)
 			rfs_link_stats->total_rx_data_bytes = pdev_stats.total_rx_data_bytes;
 			rfs_link_stats->sta_vap_exist = pdev_stats.sta_vap_exist;
 			rfs_link_stats->time_since_last_assoc = pdev_stats.time_since_last_assoc;
-#endif
 			num_pdevs++;
 		} /* pdev */
 		rfs_soc_stats->num_links = num_pdevs;
@@ -671,12 +669,17 @@ void telemetry_agent_stats_work_init_main(struct work_struct *work) {
 	else if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
 		telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
 						  RM_ENERGY_SERVICE, 1);
+	else if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE])
+		telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
+						  RM_ERP_SERVICE, 1);
 	else {
 		telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_DEINIT,
 						  RM_MAIN_SERVICE, 1);
 
 		telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_DEINIT,
 						  RM_ENERGY_SERVICE, 1);
+		telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_DEINIT,
+						  RM_ERP_SERVICE, 1);
 	}
 #endif
 
@@ -765,6 +768,13 @@ void telemetry_agent_stats_work_init_erp(struct work_struct *work)
 {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_ERP_SERVICE);
+#else
+	if (g_agent_obj.rm_telemetry.app_init[RM_ERP_SERVICE] &&
+	    g_agent_obj.rm_telemetry.erp_wifi_sample_timer)
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_erp,
+				      msecs_to_jiffies(g_agent_obj.rm_telemetry.erp_wifi_sample_timer * 1000));
+	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
+					  RM_ERP_SERVICE, 1);
 #endif
 	return;
 }
