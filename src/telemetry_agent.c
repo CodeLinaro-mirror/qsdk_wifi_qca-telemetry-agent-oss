@@ -513,10 +513,6 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 		if (!psoc_db->psoc_obj_ptr)
 			continue;
 
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
-		if (g_agent_ops->agent_get_psoc_stats(psoc_db->psoc_obj_ptr))
-			continue;
-#endif
 		rfs_soc_stats = &pmlo_stats_buffer->periodic_stats.soc_stats[num_socs];
 
 		/* call wifi driver and prepare RelayFS Message */

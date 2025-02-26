@@ -277,7 +277,6 @@ struct telemetry_agent_ops {
     int (*agent_get_psoc_info) (void *obj, struct agent_psoc_iface_init_obj *stats);
     int (*agent_get_pdev_info) (void *obj, struct agent_pdev_iface_init_obj *stats);
     int (*agent_get_peer_info) (void *obj, struct agent_peer_iface_init_obj *stats);
-    int (*agent_get_psoc_stats) (void *obj);
     int (*agent_get_pdev_stats) (void *obj, struct agent_link_iface_stats_obj *stats);
     int (*agent_get_peer_stats) (void *obj, struct agent_peer_iface_stats_obj *stats);
     int (*agent_get_emesh_pdev_stats) (void *obj, struct emesh_link_iface_stats_obj *stats);
