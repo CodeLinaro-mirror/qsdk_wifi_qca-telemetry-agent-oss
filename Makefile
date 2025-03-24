@@ -10,7 +10,13 @@ include $(obj)/$(DEPTH)/os/linux/Makefile-linux.common
 EXTRA_CFLAGS+= $(COPTS)
 ifneq ($(QCA_CBT_INSTRUMENTATION),1)
 EXTRA_CFLAGS += -Werror
+EXTRA_CFLAGS += -Wall
 endif
+endif
+
+ifeq ($(CONFIG_SDX_WAIKIKI), 1)
+EXTRA_CFLAGS += -Wno-format-security
+EXTRA_CFLAGS += -Wno-unused-but-set-variable
 endif
 
 obj-m += telemetry_agent.o

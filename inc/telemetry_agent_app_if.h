@@ -296,7 +296,7 @@ struct agent_peer_stats {
 	uint8_t m1_stats;
 	uint8_t m2_stats;
 	int8_t snr;
-	int16_t eff_chan_bw;
+	uint16_t eff_chan_bw;
 	uint16_t sla_mask; /* Uses telemetry_sawf_param for bitmask */
 };
 
@@ -404,6 +404,7 @@ struct agent_peer_init_stats {
 	uint8_t ieee_link_id;
 	uint16_t disabled_link_bitmap;
 	uint16_t peer_flags;
+	uint8_t phymode;
 	struct agent_msduq_info msduq[SAWF_MAX_QUEUES];
 };
 

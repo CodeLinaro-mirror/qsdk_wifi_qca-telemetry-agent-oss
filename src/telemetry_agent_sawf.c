@@ -407,6 +407,9 @@ uint64_t *telemtry_sawf_delay_window_alloc(void)
 	window_size = mov_avg_param->window * sizeof(uint64_t) *
 		      SAWF_MAX_QUEUES * SAWF_MAX_LATENCY_TYPE;
 
+	if (!window_size)
+		return NULL;
+
 	mov_window_ptr = kzalloc(window_size, GFP_ATOMIC);
 	if (mov_window_ptr)
 		return mov_window_ptr;
