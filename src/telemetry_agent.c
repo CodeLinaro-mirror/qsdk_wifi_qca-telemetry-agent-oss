@@ -223,6 +223,7 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 		telemetry_agent_trigger_rm_init_stats(false,
 			g_agent_obj.rm_telemetry.rfs_channel_deter);
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_DETSCHED_SERVICE] = true;
+		goto restart_wq;
 	}
 
 	spin_lock_bh(&g_agent_obj.agent_lock);
@@ -331,6 +332,7 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 	} /* soc */
 	spin_unlock_bh(&g_agent_obj.agent_lock);
 
+restart_wq:
 	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUENCY));
 }
 
@@ -496,6 +498,7 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 		telemetry_agent_trigger_rm_init_stats(false,
 			g_agent_obj.rm_telemetry.rfs_channel_pmlo);
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_PMLO_SERVICE] = true;
+		goto restart_wq;
 	}
 
 	memset(pmlo_stats_buffer, 0, sizeof(struct telemetry_pmlo_buffer));
@@ -627,6 +630,7 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 			sizeof(struct telemetry_pmlo_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_pmlo);
 
+restart_wq:
 	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUENCY));
 	return;
 }
@@ -734,6 +738,7 @@ void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_PMLO_SERVICE] = true;
 	}
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_pmlo, msecs_to_jiffies(STATS_FREQUENCY));
 #endif
 	return;
 }
@@ -755,6 +760,7 @@ void telemetry_agent_deter_stats_work_init(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_DETSCHED_SERVICE] = true;
 	}
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_deter, msecs_to_jiffies(STATS_FREQUENCY));
 #endif
 	return;
 }
@@ -784,6 +790,7 @@ void telemetry_agent_stats_work_init_admctrl(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ADMCTRL_SERVICE] = true;
 	}
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl, msecs_to_jiffies(STATS_FREQUENCY));
 #endif
 	return;
 }
@@ -792,7 +799,6 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_ENERGY_SERVICE);
-#else
 	if (g_agent_obj.rm_telemetry.is_container[RM_ENERGY_SERVICE]) {
 		/* Since for container case there is no RM_MAIN_SERVICE init
 		 * received in driver, init stats will not be triggered.
@@ -806,6 +812,8 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ENERGY_SERVICE] = true;
 	}
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
+#else
 	if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
 	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
@@ -833,6 +841,7 @@ void telemetry_agent_stats_work_periodic_admctrl(struct work_struct *work)
 		telemetry_agent_trigger_rm_init_stats(false,
 			g_agent_obj.rm_telemetry.rfs_channel_admctrl);
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ADMCTRL_SERVICE] = true;
+		goto restart_wq;
 	}
 
 	memset(admctrl_stats_buffer, 0, sizeof(struct telemetry_admctrl_buffer));
@@ -918,6 +927,7 @@ void telemetry_agent_stats_work_periodic_admctrl(struct work_struct *work)
 		    sizeof(struct telemetry_admctrl_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_admctrl);
 
+restart_wq:
 	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_admctrl,
 			      msecs_to_jiffies(STATS_FREQUENCY));
 }
@@ -943,6 +953,7 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 		telemetry_agent_trigger_rm_init_stats(false,
 			g_agent_obj.rm_telemetry.rfs_channel_energysvc);
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ENERGY_SERVICE] = true;
+		goto restart_wq;
 	}
 
 	memset(energysvc_stats_buffer, 0, sizeof(struct telemetry_energysvc_buffer));
@@ -1037,6 +1048,7 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 			sizeof(struct telemetry_energysvc_buffer));
 	relay_flush(g_agent_obj.rm_telemetry.rfs_channel_energysvc);
 
+restart_wq:
 	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
 	return;
 }
@@ -1287,14 +1299,18 @@ void telemetry_agent_dynamic_app_init_deinit_notify(
 			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
 					&work_periodic, &work_dynamic_init, service_id, is_container_app);
 
+			if (rfs_channel)
+				relay_reset(rfs_channel);
+
+			if (work_periodic)
+				cancel_delayed_work_sync(work_periodic);
+
 			if (work_init)
 				schedule_delayed_work(work_init,
 						msecs_to_jiffies(STATS_FREQUENCY));
+
 			if (work_dynamic_init && !is_container_app)
 				schedule_delayed_work(work_dynamic_init,
-						msecs_to_jiffies(STATS_FREQUENCY));
-			if (work_periodic)
-				schedule_delayed_work(work_periodic,
 						msecs_to_jiffies(STATS_FREQUENCY));
 			break;
 		case AGENT_NOTIFY_EVENT_DEINIT:
@@ -1427,9 +1443,11 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_object *agent_obj)
 {
 
+	size_t subbuf_size = sizeof(struct telemetry_rm_main_buffer) + 1000;
+
 	agent_obj->rm_telemetry.rfs_channel_main = relay_open("main_telemetry_agent",
 			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_rm_main_buffer) + 1000), RM_MAIN_MAX_SUB_BUFFERS,
+			subbuf_size, RM_MAIN_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_main) {
 		return -EPERM;
@@ -1437,7 +1455,7 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 
 	agent_obj->rm_telemetry.rfs_channel_pmlo = relay_open("pmlo_telemetry_agent",
 			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_pmlo_buffer) + 1000), PMLO_MAX_SUB_BUFFERS,
+			subbuf_size, PMLO_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_pmlo) {
 		return -EPERM;
@@ -1445,7 +1463,7 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 
 	agent_obj->rm_telemetry.rfs_channel_deter = relay_open("ds_telemetry_agent",
 			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_deter_buffer) + 1000), DETER_MAX_SUB_BUFFERS,
+			subbuf_size, DETER_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_deter) {
 		return -EPERM;
@@ -1453,7 +1471,7 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 
 	agent_obj->rm_telemetry.rfs_channel_admctrl = relay_open("admctrl_telemetry_agent",
 			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_admctrl_buffer) + 1000), ADMCTRL_MAX_SUB_BUFFERS,
+			subbuf_size, ADMCTRL_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_admctrl) {
 		return -EPERM;
@@ -1461,7 +1479,7 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 
 	agent_obj->rm_telemetry.rfs_channel_energysvc = relay_open("energysvc_telemetry_agent",
 			agent_obj->dir_ptr,
-			(sizeof(struct telemetry_energysvc_buffer) + 1000), ENERGY_SVC_MAX_SUB_BUFFERS,
+			subbuf_size, ENERGY_SVC_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 
 	if (!agent_obj->rm_telemetry.rfs_channel_energysvc) {
