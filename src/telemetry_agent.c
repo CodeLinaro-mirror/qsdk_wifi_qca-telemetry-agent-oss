@@ -1463,7 +1463,7 @@ static inline int telemetry_agent_init_relayfs_enhanched(struct telemetry_agent_
 
 	agent_obj->rm_telemetry.rfs_channel_deter = relay_open("ds_telemetry_agent",
 			agent_obj->dir_ptr,
-			subbuf_size, DETER_MAX_SUB_BUFFERS,
+			(sizeof(struct telemetry_deter_buffer) + 1000), DETER_MAX_SUB_BUFFERS,
 			&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_deter) {
 		return -EPERM;

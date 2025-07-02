@@ -30,11 +30,11 @@
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
 #define EMESH_MAX_SUB_BUFFERS 2
-#define DETER_MAX_SUB_BUFFERS 5
-#define ADMCTRL_MAX_SUB_BUFFERS 2
-#define PMLO_MAX_SUB_BUFFERS 2
-#define ERP_MAX_SUB_BUFFERS 2
-#define ENERGY_SVC_MAX_SUB_BUFFERS 2
+#define DETER_MAX_SUB_BUFFERS 1
+#define ADMCTRL_MAX_SUB_BUFFERS 1
+#define PMLO_MAX_SUB_BUFFERS 1
+#define ERP_MAX_SUB_BUFFERS 1
+#define ENERGY_SVC_MAX_SUB_BUFFERS 1
 #define RM_MAIN_MAX_SUB_BUFFERS 1
 #define STATS_FREQUENCY  1000 /*in milli seconds */
 
