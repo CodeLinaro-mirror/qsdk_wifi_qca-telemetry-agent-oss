@@ -21,7 +21,6 @@
 #define TELEMETRY_MAC_ADDR_SIZE 6
 
 struct telemetry_agent_object g_agent_obj;
-struct telemetry_rm_main_buffer *main_stats_buffer;
 struct telemetry_pmlo_buffer *pmlo_stats_buffer;
 struct telemetry_emesh_buffer *emesh_stats_buffer;
 struct telemetry_deter_buffer *deter_stats_buffer;
@@ -70,6 +69,8 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init,
 	struct agent_peer_init_stats *rfs_peer_stats = NULL;
 	struct agent_msduq_info *rfs_msduq_info = NULL;
 	struct list_head *node;
+
+	struct telemetry_rm_main_buffer *main_stats_buffer = NULL;
 
 	main_stats_buffer = kzalloc(sizeof(struct telemetry_rm_main_buffer), GFP_ATOMIC);
 	if (!main_stats_buffer){
