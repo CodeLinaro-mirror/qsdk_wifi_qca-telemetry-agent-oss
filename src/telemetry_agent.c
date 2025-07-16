@@ -1553,17 +1553,15 @@ int telemetry_agent_init_relayfs(struct telemetry_agent_object *agent_obj)
 static int telemetry_agent_psoc_create_handler(void *arg, struct agent_psoc_obj *psoc_obj)
 {
 	int status = STATUS_SUCCESS;
-	int soc_idx;
 	struct agent_soc_db *psoc_db;
 
 	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
 
 	spin_lock_bh(&g_agent_obj.agent_lock);
-	soc_idx = g_agent_obj.agent_db.num_socs;
-	psoc_db = &g_agent_obj.agent_db.psoc_db[soc_idx];
+	psoc_db = &g_agent_obj.agent_db.psoc_db[psoc_obj->psoc_id];
 	psoc_db->psoc_obj_ptr = psoc_obj->psoc_back_pointer;
-	psoc_db->soc_id = soc_idx;
+	psoc_db->soc_id = psoc_obj->psoc_id;
 	psoc_db->num_pdevs = 0;
 
 	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d\n",__func__,
