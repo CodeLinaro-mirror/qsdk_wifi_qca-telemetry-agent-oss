@@ -717,6 +717,25 @@ void telemetry_agent_stats_work_dynamic_init_main(struct work_struct *work) {
 	telemetry_agent_trigger_rm_init_stats(true, NULL);
 }
 
+void telemetry_agent_stats_work_dynamic_init_qos_optmzr(struct work_struct *work) {
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_QOS_OPTIMIZER_SERVICE);
+#else
+	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
+					  RM_QOS_OPTIMIZER_SERVICE, 1);
+#endif
+
+	if (!telemetry_agent_send_init_stats()) {
+		ta_print_debug("Agent > %s Init Stats Skipped - Minimal Mode\n",
+				__func__);
+		return;
+	}
+
+	/* Send Relayfs init stats to Qos Optmzr App */
+	telemetry_agent_trigger_rm_init_stats(false,
+					      g_agent_obj.rm_telemetry.rfs_channel_qos_optmzr);
+}
+
 void telemetry_agent_stats_work_init_pmlo(struct work_struct *work)
 {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
@@ -795,6 +814,10 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 {
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 	wlan_cfg80211_t2lm_app_reply_generic_response(NULL, 1, RM_ENERGY_SERVICE);
+#else
+	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
+					  RM_ENERGY_SERVICE, 1);
+
 	if (g_agent_obj.rm_telemetry.is_container[RM_ENERGY_SERVICE]) {
 		/* Since for container case there is no RM_MAIN_SERVICE init
 		 * received in driver, init stats will not be triggered.
@@ -808,12 +831,9 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ENERGY_SERVICE] = true;
 	}
-	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
-#else
+
 	if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
 		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
-	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
-					  RM_ENERGY_SERVICE, 1);
 #endif
 	return;
 }
@@ -1049,8 +1069,6 @@ restart_wq:
 	return;
 }
 
-
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 						struct delayed_work **work_init,
 						struct delayed_work **work_periodic,
@@ -1111,65 +1129,14 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_energysvc;
 			break;
 		}
-		default:
+		case RM_QOS_OPTIMIZER_SERVICE:
 		{
-			*rfs_channel = NULL;
+			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_qos_optmzr;
 			*work_init = NULL;
+			g_agent_obj.rm_telemetry.is_container[RM_QOS_OPTIMIZER_SERVICE] =
+				is_container_app;
 			*work_periodic = NULL;
-		}
-	}
-	return;
-}
-#else
-static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
-						struct delayed_work **work_init,
-						struct delayed_work **work_periodic,
-						struct delayed_work **work_dynamic_init,
-						uint8_t service_id)
-{
-	*work_dynamic_init =
-		&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main;
-	switch(service_id) {
-		case RM_MAIN_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_main;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_main;
-			*work_periodic = NULL;
-			break;
-		}
-		case RM_PMLO_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_pmlo;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_pmlo;
-			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_pmlo;
-			break;
-		}
-		case RM_DETSCHED_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_deter;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_deter;
-			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_deter;
-			break;
-		}
-		case RM_ERP_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_erp;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_erp;
-			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_erp;
-			break;
-		}
-		case RM_ADMCTRL_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_admctrl;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_admctrl;
-			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_admctrl;
-			break;
-		}
-		case RM_ENERGY_SERVICE:
-		{
-			*rfs_channel = g_agent_obj.rm_telemetry.rfs_channel_energysvc;
-			*work_init = &g_agent_obj.rm_telemetry.stats_work_init_energysvc;
-			*work_periodic = &g_agent_obj.rm_telemetry.stats_work_periodic_energysvc;
+			*work_dynamic_init = &g_agent_obj.rm_telemetry.stats_work_dynamic_init_qos_optmzr;
 			break;
 		}
 		default:
@@ -1181,7 +1148,6 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 	}
 	return;
 }
-#endif /* WLAN_CONFIG_TELEMETRY_AGENT */
 
 static void telemetry_agent_rm_get_service_data(enum rm_services service_id, uint64_t service_data)
 {
@@ -1205,13 +1171,10 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 		case AGENT_NOTIFY_EVENT_INIT:
 			telemetry_agent_rm_get_service_data(service_id, service_data);
 			g_agent_obj.rm_telemetry.app_init[service_id] = 1;
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+
 			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
 					&work_periodic, &work_dynamic_init, service_id, false);
-#else
-			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
-					&work_periodic, &work_dynamic_init, service_id);
-#endif /* WLAN_CONFIG_TELEMETRY_AGENT */
+
 			if (work_init)
 				schedule_delayed_work(work_init, msecs_to_jiffies(1000));
 			break;
@@ -1240,7 +1203,7 @@ void telemetry_agent_notify_app_init(enum agent_notification_event event, enum r
 								 &work_init,
 								 &work_periodic,
 								 &work_dynamic_init,
-								 service_id);
+								 service_id, false);
 			g_agent_obj.rm_telemetry.app_init[service_id] = 0;
 			if (rfs_channel)
 				relay_reset(rfs_channel);
@@ -1275,7 +1238,6 @@ void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event eve
         return;
 }
 
-#ifdef WLAN_CONFIG_TELEMETRY_AGENT
 void telemetry_agent_dynamic_app_init_deinit_notify(
 				     enum agent_notification_event event,
 				     enum rm_services service_id,
@@ -1305,7 +1267,7 @@ void telemetry_agent_dynamic_app_init_deinit_notify(
 				schedule_delayed_work(work_init,
 						msecs_to_jiffies(STATS_FREQUENCY));
 
-			if (work_dynamic_init && !is_container_app)
+			if (work_dynamic_init)
 				schedule_delayed_work(work_dynamic_init,
 						msecs_to_jiffies(STATS_FREQUENCY));
 			break;
@@ -1330,58 +1292,6 @@ void telemetry_agent_dynamic_app_init_deinit_notify(
 	}
 	return;
 }
-#else
-void telemetry_agent_dynamic_app_init_deinit_notify(
-				     enum agent_notification_event event,
-				     enum rm_services service_id,
-				     uint64_t service_data)
-{
-	struct rchan *rfs_channel;
-	struct delayed_work *work_init;
-	struct delayed_work *work_periodic;
-	struct delayed_work *work_dynamic_init;
-
-	ta_print_debug("Agent> %s event: %d for service %d \n", __func__, event, service_id);
-	switch(event) {
-		case AGENT_NOTIFY_EVENT_INIT:
-			telemetry_agent_rm_get_service_data(service_id, service_data);
-			g_agent_obj.rm_telemetry.app_init[service_id] = 1;
-			telemetry_agent_rm_get_delayed_work_info(&rfs_channel, &work_init,
-					&work_periodic, &work_dynamic_init, service_id);
-
-			if (work_init)
-				schedule_delayed_work(work_init,
-						msecs_to_jiffies(STATS_FREQUENCY));
-			if (work_dynamic_init)
-				schedule_delayed_work(work_dynamic_init,
-						msecs_to_jiffies(STATS_FREQUENCY));
-			if (work_periodic)
-				schedule_delayed_work(work_periodic,
-						msecs_to_jiffies(STATS_FREQUENCY));
-			break;
-		case AGENT_NOTIFY_EVENT_DEINIT:
-			telemetry_agent_rm_get_delayed_work_info(&rfs_channel,
-								 &work_init,
-								 &work_periodic,
-								 &work_dynamic_init,
-								 service_id);
-			g_agent_obj.rm_telemetry.app_init[service_id] = 0;
-			if (rfs_channel)
-				relay_reset(rfs_channel);
-			if (work_init)
-				cancel_delayed_work_sync(work_init);
-			if (work_dynamic_init)
-				cancel_delayed_work_sync(work_dynamic_init);
-			if (work_periodic)
-				cancel_delayed_work_sync(work_periodic);
-			break;
-		default:
-			break;
-	}
-	return;
-}
-#endif /* WLAN_CONFIG_TELEMETRY_AGENT */
-
 
 static int remove_buf_file_handler(struct dentry *dentry)
 {
@@ -1413,6 +1323,8 @@ static struct rchan_callbacks rfs_telemetry_agent_cb = {
 
 static inline int telemetry_agent_init_relayfs_basic(struct telemetry_agent_object *agent_obj)
 {
+	size_t subbuf_size = sizeof(struct telemetry_rm_main_buffer) + 1000;
+
 	agent_obj->dir_ptr = debugfs_create_dir("qca_telemetry", NULL);
 	if (agent_obj->dir_ptr == NULL)
 		return -EPERM;
@@ -1422,6 +1334,17 @@ static inline int telemetry_agent_init_relayfs_basic(struct telemetry_agent_obje
 		(sizeof(struct telemetry_erp_buffer) + 1000), ERP_MAX_SUB_BUFFERS,
 		&rfs_telemetry_agent_cb, NULL);
 	if (!agent_obj->rm_telemetry.rfs_channel_erp) {
+		debugfs_remove_recursive(agent_obj->dir_ptr);
+		agent_obj->dir_ptr = NULL;
+		return -EPERM;
+	}
+
+	agent_obj->rm_telemetry.rfs_channel_qos_optmzr = relay_open("qos_optmzr_telemetry_agent",
+			agent_obj->dir_ptr,
+			subbuf_size, QOSOPT_SVC_MAX_SUB_BUFFERS,
+			&rfs_telemetry_agent_cb, NULL);
+
+	if (!agent_obj->rm_telemetry.rfs_channel_qos_optmzr) {
 		debugfs_remove_recursive(agent_obj->dir_ptr);
 		agent_obj->dir_ptr = NULL;
 		return -EPERM;
@@ -1518,6 +1441,9 @@ int telemetry_agent_deinit_relayfs(struct telemetry_agent_object *agent_obj)
 
 	if (g_agent_obj.rm_telemetry.rfs_channel_energysvc)
 		relay_close(g_agent_obj.rm_telemetry.rfs_channel_energysvc);
+
+	if (g_agent_obj.rm_telemetry.rfs_channel_qos_optmzr)
+		relay_close(g_agent_obj.rm_telemetry.rfs_channel_qos_optmzr);
 
 	debugfs_remove_recursive(g_agent_obj.dir_ptr);
 	g_agent_obj.dir_ptr = NULL;
@@ -2232,6 +2158,7 @@ static int telemetry_agent_init_module_basic(void)
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main, telemetry_agent_stats_work_dynamic_init_main);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_init_erp, telemetry_agent_stats_work_init_erp);
 	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_periodic_erp, telemetry_agent_stats_work_periodic_erp);
+	INIT_DELAYED_WORK(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_qos_optmzr, telemetry_agent_stats_work_dynamic_init_qos_optmzr);
 
 	return status;
 }
@@ -2247,6 +2174,7 @@ static inline void telemetry_agent_remove_workqueues_basic(void)
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_main);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_init_erp);
 	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_periodic_erp);
+	cancel_delayed_work_sync(&g_agent_obj.rm_telemetry.stats_work_dynamic_init_qos_optmzr);
 }
 
 #ifdef TELEMETRY_AGENT_256M
