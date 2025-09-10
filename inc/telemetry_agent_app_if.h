@@ -37,6 +37,7 @@
 #define MUMIMO_MAX_USERS 8
 #define SAWF_MAXQ_PTID 2
 #define SAWF_MAX_QUEUES (NUM_TIDS * SAWF_MAXQ_PTID)
+#define MAX_MCS_CNT 14
 
 /*
    Buffer Format
@@ -346,6 +347,8 @@ struct energysvc_link_stats {
 	uint16_t freq;
 	bool is_mon_enabled;
 	struct energysvc_peer_stats peer_stats[MAX_PEERS];
+	uint32_t tx_mcs[MAX_MCS_CNT];
+	uint64_t tx_pkt_bytes;
 };
 
 struct energysvc_soc_stats {

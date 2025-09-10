@@ -1006,6 +1006,11 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 
 			rfs_link_stats->is_mon_enabled = pdev_stats.is_mon_enabled;
 
+			rfs_link_stats->tx_pkt_bytes = pdev_stats.tx_pkt_bytes;
+			memcpy(rfs_link_stats->tx_mcs,
+			    pdev_stats.tx_mcs,
+			    sizeof(rfs_link_stats->tx_mcs));
+
 			num_peers = 0;
 			spin_lock_bh(&pdev_db->peer_db_lock);
 			list_for_each(node, &pdev_db->peer_db_list) {
