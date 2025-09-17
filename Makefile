@@ -14,6 +14,11 @@ EXTRA_CFLAGS += -Wall
 endif
 endif
 
+ifeq ($(CONFIG_SDX_WAIKIKI), 1)
+EXTRA_CFLAGS += -Wno-format-security
+EXTRA_CFLAGS += -Wno-unused-but-set-variable
+endif
+
 obj-m += telemetry_agent.o
 telemetry_agent-objs := src/telemetry_agent.o src/telemetry_agent_sawf.o
 

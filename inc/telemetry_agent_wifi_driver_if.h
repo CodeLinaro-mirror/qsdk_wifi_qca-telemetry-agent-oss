@@ -154,6 +154,8 @@ struct agent_link_iface_stats_obj {
     uint32_t avg_chan_latency[WLAN_AC_MAX];
     bool is_mon_enabled;
     uint16_t freq;
+    uint32_t tx_mcs[MAX_MCS_CNT];
+    uint64_t tx_pkt_bytes;
 };
 
 struct emesh_peer_iface_stats_obj {
