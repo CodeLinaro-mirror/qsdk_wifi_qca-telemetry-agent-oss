@@ -832,7 +832,7 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 #else
 	telemetry_agent_notify_host_event(AGENT_NOTIFY_EVENT_INIT,
 					  RM_ENERGY_SERVICE, 1);
-
+#endif
 	if (g_agent_obj.rm_telemetry.is_container[RM_ENERGY_SERVICE]) {
 		/* Since for container case there is no RM_MAIN_SERVICE init
 		 * received in driver, init stats will not be triggered.
@@ -846,9 +846,13 @@ void telemetry_agent_stats_work_init_energysvc(struct work_struct *work)
 		 */
 		g_agent_obj.rm_telemetry.init_stats_pending[RM_ENERGY_SERVICE] = true;
 	}
-
+#ifdef WLAN_CONFIG_TELEMETRY_AGENT
+	schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc,
+	                      msecs_to_jiffies(STATS_FREQUENCY));
+#else
 	if (g_agent_obj.rm_telemetry.app_init[RM_ENERGY_SERVICE])
-		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc, msecs_to_jiffies(STATS_FREQUENCY));
+		schedule_delayed_work(&g_agent_obj.rm_telemetry.stats_work_periodic_energysvc,
+		                      msecs_to_jiffies(STATS_FREQUENCY));
 #endif
 	return;
 }
