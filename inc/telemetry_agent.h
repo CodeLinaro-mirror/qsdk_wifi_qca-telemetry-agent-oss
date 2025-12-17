@@ -186,6 +186,19 @@ struct agent_rm_telemetry {
 	struct delayed_work stats_work_dynamic_init_main;
 };
 
+struct agent_rssi_rate_thresholds {
+	int32_t rssi_min_threshold;
+	int32_t rssi_max_threshold;
+	int32_t ackrssi_min_threshold;
+	int32_t ackrssi_max_threshold;
+	uint32_t txrate_min_threshold;
+	uint32_t txrate_max_threshold;
+	uint32_t rxrate_min_threshold;
+	uint32_t rxrate_max_threshold;
+	uint8_t enabled_mask;
+	uint8_t breach_notified_mask;
+};
+
 struct telemetry_agent_object {
 	/* RelayFS */
 	uint32_t num_subbufs;
@@ -204,8 +217,21 @@ struct telemetry_agent_object {
 	spinlock_t agent_lock;
 	struct timer_list peer_stats_timer;
 	bool peer_stats_timer_enabled;
+	struct agent_rssi_rate_thresholds rssi_rate_thresh;
 };
 
+/* Breach type enums for NL event */
+enum telemetry_breach_type {
+	BREACH_TYPE_RSSI_MIN = 0,
+	BREACH_TYPE_RSSI_MAX = 1,
+	BREACH_TYPE_ACKRSSI_MIN = 2,
+	BREACH_TYPE_ACKRSSI_MAX = 3,
+	BREACH_TYPE_TXRATE_MIN = 4,
+	BREACH_TYPE_TXRATE_MAX = 5,
+	BREACH_TYPE_RXRATE_MIN = 6,
+	BREACH_TYPE_RXRATE_MAX = 7,
+	BREACH_TYPE_MAX,
+};
 
 extern int register_telemetry_agent_ops(struct telemetry_agent_ops *agent_ops);
 extern int unregister_telemetry_agent_ops(struct telemetry_agent_ops *agent_ops);

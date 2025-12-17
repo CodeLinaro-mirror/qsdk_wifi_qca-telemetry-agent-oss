@@ -2051,6 +2051,281 @@ static int telemetry_agent_pull_tx_peer_stats(uint8_t *peer_mac,
 
 }
 
+static int telemetry_set_rssi_rate_threshold(uint8_t type, uint32_t value)
+{
+	switch (type) {
+	case THRESHOLD_RSSI_MIN:
+		g_agent_obj.rssi_rate_thresh.rssi_min_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set rssi_min_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_RSSI_MAX:
+		g_agent_obj.rssi_rate_thresh.rssi_max_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set rssi_max_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_ACKRSSI_MIN:
+		g_agent_obj.rssi_rate_thresh.ackrssi_min_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set ackrssi_min_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_ACKRSSI_MAX:
+		g_agent_obj.rssi_rate_thresh.ackrssi_max_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set ackrssi_max_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_TXRATE_MIN:
+		g_agent_obj.rssi_rate_thresh.txrate_min_threshold = value;
+		ta_print_debug("Agent > Set txrate_min_threshold: %u\n", value);
+		break;
+	case THRESHOLD_TXRATE_MAX:
+		g_agent_obj.rssi_rate_thresh.txrate_max_threshold = value;
+		ta_print_debug("Agent > Set txrate_max_threshold: %u\n", value);
+		break;
+	case THRESHOLD_RXRATE_MIN:
+		g_agent_obj.rssi_rate_thresh.rxrate_min_threshold = value;
+		ta_print_debug("Agent > Set rxrate_min_threshold: %u\n", value);
+		break;
+	case THRESHOLD_RXRATE_MAX:
+		g_agent_obj.rssi_rate_thresh.rxrate_max_threshold = value;
+		ta_print_debug("Agent > Set rxrate_max_threshold: %u\n", value);
+		break;
+	default:
+		ta_print_error("Agent > Invalid threshold type: %u\n", type);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int telemetry_print_rssi_rate_thresholds(void)
+{
+
+	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
+	uint8_t enabled_mask = thresh->enabled_mask;
+	uint8_t breach_mask = thresh->breach_notified_mask;
+
+	ta_print_info("========================================================================\n");
+	ta_print_info("                    RSSI/Rate Thresholds Status\n");
+	ta_print_info("========================================================================\n");
+	ta_print_info("%-20s | %-10s | %-10s | %-15s\n",
+	       "Threshold Type", "Value", "Enabled", "Breach Notified");
+	ta_print_info("------------------------------------------------------------------------\n");
+	ta_print_info("%-20s | %-10d | %-10s | %-15s\n",
+	       "RSSI Min",
+	       thresh->rssi_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RSSI_MIN)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_RSSI_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s | %-15s\n",
+	       "RSSI Max",
+	       thresh->rssi_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RSSI_MAX)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_RSSI_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s | %-15s\n",
+	       "ACK RSSI Min",
+	       thresh->ackrssi_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_ACKRSSI_MIN)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_ACKRSSI_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s | %-15s\n",
+	       "ACK RSSI Max",
+	       thresh->ackrssi_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_ACKRSSI_MAX)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_ACKRSSI_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s | %-15s\n",
+	       "TX Rate Min",
+	       thresh->txrate_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_TXRATE_MIN)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_TXRATE_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s | %-15s\n",
+	       "TX Rate Max",
+	       thresh->txrate_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_TXRATE_MAX)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_TXRATE_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s | %-15s\n",
+	       "RX Rate Min",
+	       thresh->rxrate_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RXRATE_MIN)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_RXRATE_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s | %-15s\n",
+	       "RX Rate Max",
+	       thresh->rxrate_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RXRATE_MAX)) ? "Yes" : "No",
+	       (breach_mask & (1 << THRESHOLD_RXRATE_MAX)) ? "Yes" : "No");
+	ta_print_info("========================================================================\n");
+	ta_print_info("\n");
+	ta_print_info("Enabled Mask:         %u\n", enabled_mask);
+	ta_print_info("Breach Notified Mask: %u\n", breach_mask);
+
+	return 0;
+}
+
+static int telemetry_set_rssi_rate_breach_mask(uint8_t mask)
+{
+	g_agent_obj.rssi_rate_thresh.enabled_mask = mask;
+	ta_print_debug("Agent > Set breach mask: 0x%02X\n", mask);
+
+	return 0;
+}
+
+static int telemetry_notify_rssi_rate_breach(uint8_t *peer_mac,
+					      uint8_t breach_type,
+					      uint32_t threshold_value,
+					      uint32_t detected_value,
+					      bool set_clear)
+{
+	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
+	uint8_t breach_mask = thresh->breach_notified_mask;
+	bool already_notified = breach_mask & (1 << breach_type);
+
+	if (already_notified == set_clear) {
+		return 0;
+	}
+
+	if (set_clear) {
+		thresh->breach_notified_mask |= (1 << breach_type);
+	} else {
+		thresh->breach_notified_mask &= ~(1 << breach_type);
+	}
+
+	if (g_agent_ops && g_agent_ops->agent_notify_rssi_rate_breach) {
+		g_agent_ops->agent_notify_rssi_rate_breach(peer_mac, breach_type,
+							    threshold_value,
+							    detected_value,
+							    set_clear);
+	}
+
+	return 0;
+}
+
+/**
+ * telemetry_update_rssi_rate_breach - Unified breach detection handler
+ * @peer_mac: Peer MAC address
+ * @path_type: PATH_TYPE_RX (0) or PATH_TYPE_TX (1)
+ * @rssi_value: RSSI (if path_type=0) or ACK RSSI (if path_type=1)
+ * @rate_value: RX rate (if path_type=0) or TX rate (if path_type=1)
+ */
+static int telemetry_update_rssi_rate_breach(uint8_t *peer_mac,
+					     uint8_t path_type,
+					     int32_t rssi_value,
+					     uint32_t rate_value)
+{
+	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
+	uint8_t enabled_mask = thresh->enabled_mask;
+	int32_t rssi_thresh;
+	uint32_t rate_thresh;
+	uint8_t breach_type;
+
+	if (!peer_mac) {
+		ta_print_error("Agent > peer_mac is NULL\n");
+		return -EINVAL;
+	}
+
+	if (path_type == PATH_TYPE_RX) {
+		/* Check RSSI min threshold */
+		breach_type = BREACH_TYPE_RSSI_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->rssi_min_threshold;
+			if (rssi_value < rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check RSSI max threshold */
+		breach_type = BREACH_TYPE_RSSI_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->rssi_max_threshold;
+			if (rssi_value > rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check RX rate min threshold */
+		breach_type = BREACH_TYPE_RXRATE_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->rxrate_min_threshold;
+			if (rate_value < rate_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+		/* Check RX rate max threshold */
+		breach_type = BREACH_TYPE_RXRATE_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->rxrate_max_threshold;
+			if (rate_value > rate_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+	} else if (path_type == PATH_TYPE_TX) {
+		/* Check ACK RSSI min threshold */
+		breach_type = BREACH_TYPE_ACKRSSI_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->ackrssi_min_threshold;
+			if (rssi_value < rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check ACK RSSI max threshold */
+		breach_type = BREACH_TYPE_ACKRSSI_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->ackrssi_max_threshold;
+			if (rssi_value > rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check TX rate min threshold */
+		breach_type = BREACH_TYPE_TXRATE_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->txrate_min_threshold;
+			if (rate_value < rate_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+		/* Check TX rate max threshold */
+		breach_type = BREACH_TYPE_TXRATE_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->txrate_max_threshold;
+			if (rate_value > rate_thresh) {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+	}
+
+	return 0;
+}
+
 struct telemetry_agent_ops agent_ops = {
 	agent_psoc_create_handler:telemetry_agent_psoc_create_handler,
 	agent_psoc_destroy_handler:telemetry_agent_psoc_destroy_handler,
@@ -2087,6 +2362,10 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_reset_peer_stats: telemetry_sawf_reset_peer_stats,
 	sawf_set_sla_detect_config:telemetry_sawf_set_sla_detect_config,
 	sawf_set_sla_config: telemetry_sawf_set_sla_config,
+	agent_set_rssi_rate_threshold: telemetry_set_rssi_rate_threshold,
+	agent_print_rssi_rate_thresholds: telemetry_print_rssi_rate_thresholds,
+	agent_set_rssi_rate_breach_mask: telemetry_set_rssi_rate_breach_mask,
+	agent_update_rssi_rate_breach: telemetry_update_rssi_rate_breach,
 };
 
 static int telemetry_agent_init_module_basic(void)
