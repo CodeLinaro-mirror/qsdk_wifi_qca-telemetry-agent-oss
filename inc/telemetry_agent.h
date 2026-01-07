@@ -22,8 +22,8 @@
 #include <linux/proc_fs.h>
 #include <linux/device.h>
 #include <linux/debugfs.h>
-#include "telemetry_agent_wifi_driver_if.h"
-#include "telemetry_agent_app_if.h"
+#include <telemetry_agent_wifi_driver_if.h>
+#include "../inc/telemetry_agent_app_if.h"
 
 #define STATUS_SUCCESS 0
 #define STATUS_FAIL -1

@@ -16,7 +16,8 @@
 
 #include "../inc/telemetry_agent.h"
 #include "../inc/telemetry_agent_sawf.h"
-#include "../inc/telemetry_agent_wifi_driver_if.h"
+#include <telemetry_agent_wifi_driver_if.h>
+#include "../inc/telemetry_agent_app_if.h"
 
 #define TELEMETRY_MAC_ADDR_SIZE 6
 
@@ -125,8 +126,24 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init,
 							peer_stats.peer_link_mac, 6);
                     /* T2LM Info */
 					for(idx = 0; idx < MAX_T2LM_INFO; idx++) {
-						rfs_peer_stats->t2lm_info[idx].direction =
-							peer_stats.t2lm_info[idx].direction;
+						switch (peer_stats.t2lm_info[idx].direction) {
+						case T2LM_BIDI_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_BIDI_DIRECTION;
+							break;
+						case T2LM_DOWNLINK_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_DOWNLINK_DIRECTION;
+							break;
+						case T2LM_UPLINK_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_UPLINK_DIRECTION;
+							break;
+						default:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_INVALID_DIRECTION;
+							break;
+						}
 						rfs_peer_stats->t2lm_info[idx].default_link_mapping =
 							peer_stats.t2lm_info[idx].default_link_mapping;
 
@@ -205,19 +222,10 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init,
 
 void telemetry_deter_stats_work_periodic(struct work_struct *work)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	struct agent_soc_db *psoc_db = NULL;
-	struct agent_pdev_db *pdev_db = NULL;
-	int num_pdevs = 0;
-	struct deter_link_iface_stats_obj pdev_stats = {0};
-	/* int num_peers = 0;
-	struct agent_peer_db *peer_db = NULL;
-	struct deter_peer_iface_stats_obj *peer_stats = NULL;
-	struct deter_peer_stats *rfs_peer_stats = NULL; */
-
 	struct deter_soc_stats *rfs_soc_stats = NULL;
 	struct deter_link_stats *rfs_link_stats = NULL;
-	// struct list_head *node;
 
 	if (!g_agent_obj.rm_telemetry.init_stats_pending[RM_DETSCHED_SERVICE]) {
 		telemetry_agent_trigger_rm_init_stats(false,
@@ -248,82 +256,6 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 		deter_stats_buffer->relayfs_stats.soc_stats.soc_id = psoc_db->soc_id;
 
 		rfs_soc_stats = &deter_stats_buffer->relayfs_stats.soc_stats;
-
-		num_pdevs = 0;
-
-		for (j = 0; j < MAX_PDEV_LINKS_DB; j++) {
-			pdev_db = &psoc_db->pdev_db[j];
-			if (!pdev_db->pdev_obj_ptr)
-				continue;
-
-			rfs_link_stats = &rfs_soc_stats->link_stats[num_pdevs];
-			g_agent_ops->agent_get_deter_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
-
-			memcpy(&rfs_link_stats->link_mac[0],
-			       pdev_stats.link_mac,6);
-			rfs_link_stats->hw_link_id = pdev_stats.hw_link_id;
-			rfs_link_stats->num_peers = pdev_db->num_peers;
-			ta_print_debug("Agent > %s: Hw Link ID: %d",__func__,pdev_stats.hw_link_id);
-			ta_print_debug("Agent > pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
-			memcpy(rfs_link_stats->dl_ofdma_usr,
-				pdev_stats.dl_ofdma_usr,
-				sizeof(rfs_link_stats->dl_ofdma_usr));
-			memcpy(rfs_link_stats->ul_ofdma_usr,
-				pdev_stats.ul_ofdma_usr,
-				sizeof(rfs_link_stats->ul_ofdma_usr));
-			memcpy(rfs_link_stats->dl_mimo_usr,
-				pdev_stats.dl_mimo_usr,
-				sizeof(rfs_link_stats->dl_mimo_usr));
-			memcpy(rfs_link_stats->ul_mimo_usr,
-				pdev_stats.ul_mimo_usr,
-				sizeof(rfs_link_stats->ul_mimo_usr));
-
-			memcpy(rfs_link_stats->dl_mode_cnt,
-				pdev_stats.dl_mode_cnt,
-				sizeof(rfs_link_stats->dl_mode_cnt));
-			memcpy(rfs_link_stats->ul_mode_cnt,
-				pdev_stats.ul_mode_cnt,
-				sizeof(rfs_link_stats->ul_mode_cnt));
-
-			memcpy(rfs_link_stats->ch_access_delay,
-				pdev_stats.ch_access_delay,
-				sizeof(rfs_link_stats->ch_access_delay));
-
-			memcpy(rfs_link_stats->ts,
-				pdev_stats.ts,
-				sizeof(rfs_link_stats->ts));
-
-			rfs_link_stats->ch_util.tx_util = pdev_stats.ch_util.tx_util;
-			rfs_link_stats->ch_util.rx_util = pdev_stats.ch_util.rx_util;
-			rfs_link_stats->ch_util.chan_util = pdev_stats.ch_util.chan_util;
-			rfs_link_stats->rx_su_cnt = pdev_stats.rx_su_cnt;
-
-			/*
-			num_peers = 0;
-
-			spin_lock_bh(&pdev_db->peer_db_lock);
-			list_for_each(node, &pdev_db->peer_db_list) {
-				peer_db = list_entry(node, struct agent_peer_db, node);
-				peer_stats = &pdev_db->peer_stats;
-				if (!peer_stats) {
-					ta_print_error("Agent > %s\n: error allocating peer_stats",__func__);
-				};
-				memset(peer_stats, 0, sizeof(struct deter_peer_iface_stats_obj));
-				if ((peer_db) && !g_agent_ops->agent_get_deter_peer_stats(peer_db->peer_obj_ptr, peer_stats))
-				{
-					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers++];
-					memcpy(&rfs_peer_stats->peer_link_mac[0],
-					peer_stats->peer_link_mac, 6);
-					memcpy(&rfs_peer_stats->deter,
-					&peer_stats->deter,sizeof(rfs_peer_stats->deter));
-					rfs_peer_stats->vdev_id = peer_stats->vdev_id;
-				}
-			}
-
-			spin_unlock_bh(&pdev_db->peer_db_lock); */
-			num_pdevs++;
-		}/* pdev */
-		rfs_soc_stats->num_links = num_pdevs;
 
 		deter_stats_buffer->end_magic_num = 0xFEEDEEEE ^ i;
 		relay_write(g_agent_obj.rm_telemetry.rfs_channel_deter, deter_stats_buffer,
@@ -572,7 +504,8 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)))
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -643,7 +576,7 @@ static inline bool telemetry_agent_send_init_stats(void)
 #endif /* TELEMETRY_AGENT_256M */
 
 static inline void telemetry_agent_notify_host_event(enum agent_notification_event event,
-						     enum rm_services service_id,
+						     int service_id,
 						     uint8_t category)
 {
 	if (g_agent_ops->agent_notify_host_event)
@@ -1028,11 +961,13 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 				memset(&peer_stats, 0, sizeof(struct agent_peer_iface_stats_obj));
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)) &&
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)) &&
 				    !(g_agent_ops->agent_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats_tx)))
 #else
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)))
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
@@ -1159,13 +1094,13 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 	return;
 }
 
-static void telemetry_agent_rm_get_service_data(enum rm_services service_id, uint64_t service_data)
+static void telemetry_agent_rm_get_service_data(int service_id, uint64_t service_data)
 {
 	if (service_id == RM_ERP_SERVICE)
 		g_agent_obj.rm_telemetry.erp_wifi_sample_timer = service_data;
 }
 
-void telemetry_agent_notify_app_init(enum agent_notification_event event, enum rm_services service_id,
+void telemetry_agent_notify_app_init(enum agent_notification_event event, int service_id,
 				     uint64_t service_data)
 {
 	struct rchan *rfs_channel;
@@ -1250,7 +1185,7 @@ void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event eve
 
 void telemetry_agent_dynamic_app_init_deinit_notify(
 				     enum agent_notification_event event,
-				     enum rm_services service_id,
+				     int service_id,
 				     uint64_t service_data,
 				     bool is_container_app)
 {
