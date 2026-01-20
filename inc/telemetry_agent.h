@@ -27,6 +27,8 @@
 
 #define STATUS_SUCCESS 0
 #define STATUS_FAIL -1
+
+#define ATH12K_MAX_PEER_ID 2048
 /* Maximum buffer size that is requied to transfer stats between
 agent and APP */
 #define EMESH_MAX_SUB_BUFFERS 2
@@ -131,6 +133,7 @@ struct agent_soc_db {
 	uint8_t soc_id;
 	uint8_t num_pdevs;
 	struct agent_pdev_db pdev_db[MAX_PDEV_LINKS_DB];
+	uint8_t breach_notified_mask[ATH12K_MAX_PEER_ID];
 };
 
 struct agent_telemtry_db {
@@ -196,7 +199,6 @@ struct agent_rssi_rate_thresholds {
 	uint32_t rxrate_min_threshold;
 	uint32_t rxrate_max_threshold;
 	uint8_t enabled_mask;
-	uint8_t breach_notified_mask;
 };
 
 struct telemetry_agent_object {
