@@ -16,7 +16,8 @@
 
 #include "../inc/telemetry_agent.h"
 #include "../inc/telemetry_agent_sawf.h"
-#include "../inc/telemetry_agent_wifi_driver_if.h"
+#include <telemetry_agent_wifi_driver_if.h>
+#include "../inc/telemetry_agent_app_if.h"
 
 #define TELEMETRY_MAC_ADDR_SIZE 6
 
@@ -125,8 +126,24 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init,
 							peer_stats.peer_link_mac, 6);
                     /* T2LM Info */
 					for(idx = 0; idx < MAX_T2LM_INFO; idx++) {
-						rfs_peer_stats->t2lm_info[idx].direction =
-							peer_stats.t2lm_info[idx].direction;
+						switch (peer_stats.t2lm_info[idx].direction) {
+						case T2LM_BIDI_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_BIDI_DIRECTION;
+							break;
+						case T2LM_DOWNLINK_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_DOWNLINK_DIRECTION;
+							break;
+						case T2LM_UPLINK_DIRECTION:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_UPLINK_DIRECTION;
+							break;
+						default:
+							rfs_peer_stats->t2lm_info[idx].direction =
+											WLAN_VENDOR_T2LM_INVALID_DIRECTION;
+							break;
+						}
 						rfs_peer_stats->t2lm_info[idx].default_link_mapping =
 							peer_stats.t2lm_info[idx].default_link_mapping;
 
@@ -205,19 +222,10 @@ static void telemetry_agent_trigger_rm_init_stats(bool dynamic_init,
 
 void telemetry_deter_stats_work_periodic(struct work_struct *work)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	struct agent_soc_db *psoc_db = NULL;
-	struct agent_pdev_db *pdev_db = NULL;
-	int num_pdevs = 0;
-	struct deter_link_iface_stats_obj pdev_stats = {0};
-	/* int num_peers = 0;
-	struct agent_peer_db *peer_db = NULL;
-	struct deter_peer_iface_stats_obj *peer_stats = NULL;
-	struct deter_peer_stats *rfs_peer_stats = NULL; */
-
 	struct deter_soc_stats *rfs_soc_stats = NULL;
 	struct deter_link_stats *rfs_link_stats = NULL;
-	// struct list_head *node;
 
 	if (!g_agent_obj.rm_telemetry.init_stats_pending[RM_DETSCHED_SERVICE]) {
 		telemetry_agent_trigger_rm_init_stats(false,
@@ -248,82 +256,6 @@ void telemetry_deter_stats_work_periodic(struct work_struct *work)
 		deter_stats_buffer->relayfs_stats.soc_stats.soc_id = psoc_db->soc_id;
 
 		rfs_soc_stats = &deter_stats_buffer->relayfs_stats.soc_stats;
-
-		num_pdevs = 0;
-
-		for (j = 0; j < MAX_PDEV_LINKS_DB; j++) {
-			pdev_db = &psoc_db->pdev_db[j];
-			if (!pdev_db->pdev_obj_ptr)
-				continue;
-
-			rfs_link_stats = &rfs_soc_stats->link_stats[num_pdevs];
-			g_agent_ops->agent_get_deter_pdev_stats(pdev_db->pdev_obj_ptr, &pdev_stats);
-
-			memcpy(&rfs_link_stats->link_mac[0],
-			       pdev_stats.link_mac,6);
-			rfs_link_stats->hw_link_id = pdev_stats.hw_link_id;
-			rfs_link_stats->num_peers = pdev_db->num_peers;
-			ta_print_debug("Agent > %s: Hw Link ID: %d",__func__,pdev_stats.hw_link_id);
-			ta_print_debug("Agent > pdev_mac: %s\n",print_mac_addr(&pdev_stats.link_mac[0]));
-			memcpy(rfs_link_stats->dl_ofdma_usr,
-				pdev_stats.dl_ofdma_usr,
-				sizeof(rfs_link_stats->dl_ofdma_usr));
-			memcpy(rfs_link_stats->ul_ofdma_usr,
-				pdev_stats.ul_ofdma_usr,
-				sizeof(rfs_link_stats->ul_ofdma_usr));
-			memcpy(rfs_link_stats->dl_mimo_usr,
-				pdev_stats.dl_mimo_usr,
-				sizeof(rfs_link_stats->dl_mimo_usr));
-			memcpy(rfs_link_stats->ul_mimo_usr,
-				pdev_stats.ul_mimo_usr,
-				sizeof(rfs_link_stats->ul_mimo_usr));
-
-			memcpy(rfs_link_stats->dl_mode_cnt,
-				pdev_stats.dl_mode_cnt,
-				sizeof(rfs_link_stats->dl_mode_cnt));
-			memcpy(rfs_link_stats->ul_mode_cnt,
-				pdev_stats.ul_mode_cnt,
-				sizeof(rfs_link_stats->ul_mode_cnt));
-
-			memcpy(rfs_link_stats->ch_access_delay,
-				pdev_stats.ch_access_delay,
-				sizeof(rfs_link_stats->ch_access_delay));
-
-			memcpy(rfs_link_stats->ts,
-				pdev_stats.ts,
-				sizeof(rfs_link_stats->ts));
-
-			rfs_link_stats->ch_util.tx_util = pdev_stats.ch_util.tx_util;
-			rfs_link_stats->ch_util.rx_util = pdev_stats.ch_util.rx_util;
-			rfs_link_stats->ch_util.chan_util = pdev_stats.ch_util.chan_util;
-			rfs_link_stats->rx_su_cnt = pdev_stats.rx_su_cnt;
-
-			/*
-			num_peers = 0;
-
-			spin_lock_bh(&pdev_db->peer_db_lock);
-			list_for_each(node, &pdev_db->peer_db_list) {
-				peer_db = list_entry(node, struct agent_peer_db, node);
-				peer_stats = &pdev_db->peer_stats;
-				if (!peer_stats) {
-					ta_print_error("Agent > %s\n: error allocating peer_stats",__func__);
-				};
-				memset(peer_stats, 0, sizeof(struct deter_peer_iface_stats_obj));
-				if ((peer_db) && !g_agent_ops->agent_get_deter_peer_stats(peer_db->peer_obj_ptr, peer_stats))
-				{
-					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers++];
-					memcpy(&rfs_peer_stats->peer_link_mac[0],
-					peer_stats->peer_link_mac, 6);
-					memcpy(&rfs_peer_stats->deter,
-					&peer_stats->deter,sizeof(rfs_peer_stats->deter));
-					rfs_peer_stats->vdev_id = peer_stats->vdev_id;
-				}
-			}
-
-			spin_unlock_bh(&pdev_db->peer_db_lock); */
-			num_pdevs++;
-		}/* pdev */
-		rfs_soc_stats->num_links = num_pdevs;
 
 		deter_stats_buffer->end_magic_num = 0xFEEDEEEE ^ i;
 		relay_write(g_agent_obj.rm_telemetry.rfs_channel_deter, deter_stats_buffer,
@@ -572,7 +504,8 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 				peer_db = list_entry(node, struct agent_peer_db, node);
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)))
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -643,7 +576,7 @@ static inline bool telemetry_agent_send_init_stats(void)
 #endif /* TELEMETRY_AGENT_256M */
 
 static inline void telemetry_agent_notify_host_event(enum agent_notification_event event,
-						     enum rm_services service_id,
+						     int service_id,
 						     uint8_t category)
 {
 	if (g_agent_ops->agent_notify_host_event)
@@ -1028,11 +961,13 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 				memset(&peer_stats, 0, sizeof(struct agent_peer_iface_stats_obj));
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)) &&
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)) &&
 				    !(g_agent_ops->agent_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats_tx)))
 #else
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
-				    !(g_agent_ops->agent_get_peer_stats(peer_db, &peer_stats)))
+				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
+										peer_db->psoc_obj_ptr, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
@@ -1159,13 +1094,13 @@ static void telemetry_agent_rm_get_delayed_work_info(struct rchan **rfs_channel,
 	return;
 }
 
-static void telemetry_agent_rm_get_service_data(enum rm_services service_id, uint64_t service_data)
+static void telemetry_agent_rm_get_service_data(int service_id, uint64_t service_data)
 {
 	if (service_id == RM_ERP_SERVICE)
 		g_agent_obj.rm_telemetry.erp_wifi_sample_timer = service_data;
 }
 
-void telemetry_agent_notify_app_init(enum agent_notification_event event, enum rm_services service_id,
+void telemetry_agent_notify_app_init(enum agent_notification_event event, int service_id,
 				     uint64_t service_data)
 {
 	struct rchan *rfs_channel;
@@ -1250,7 +1185,7 @@ void telemetry_agent_notifiy_emesh_init_deinit(enum agent_notification_event eve
 
 void telemetry_agent_dynamic_app_init_deinit_notify(
 				     enum agent_notification_event event,
-				     enum rm_services service_id,
+				     int service_id,
 				     uint64_t service_data,
 				     bool is_container_app)
 {
@@ -1491,10 +1426,10 @@ static int telemetry_agent_psoc_create_handler(void *arg, struct agent_psoc_obj 
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
 
 	spin_lock_bh(&g_agent_obj.agent_lock);
-	soc_idx = g_agent_obj.agent_db.num_socs;
+	soc_idx = psoc_obj->psoc_id;
 	psoc_db = &g_agent_obj.agent_db.psoc_db[soc_idx];
 	psoc_db->psoc_obj_ptr = psoc_obj->psoc_back_pointer;
-	psoc_db->soc_id = soc_idx;
+	psoc_db->soc_id = psoc_obj->psoc_id;
 	psoc_db->num_pdevs = 0;
 
 	ta_print_debug("AgentDB> %s: psoc: %p psoc_id: %d\n",__func__,
@@ -1890,6 +1825,8 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 	psoc_db = &g_agent_obj.agent_db.psoc_db[psoc_obj->psoc_id];
 	psoc_db->psoc_obj_ptr = NULL;
 	psoc_db->num_pdevs = 0;
+	memset(psoc_db->breach_notified_mask, 0,
+	       sizeof(psoc_db->breach_notified_mask));
 	g_agent_obj.agent_db.num_socs--;
 	spin_unlock_bh(&g_agent_obj.agent_lock);
 
@@ -1962,6 +1899,7 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		}
 
 	if (node_remove && peer_db_remove) {
+		psoc_db->breach_notified_mask[peer_db_remove->peer_id] = 0;
 		list_del(node);
 		kfree(peer_db_remove);
 	} else {
@@ -2116,6 +2054,293 @@ static int telemetry_agent_pull_tx_peer_stats(uint8_t *peer_mac,
 
 }
 
+static int telemetry_set_rssi_rate_threshold(uint8_t type, uint32_t value)
+{
+	switch (type) {
+	case THRESHOLD_RSSI_MIN:
+		g_agent_obj.rssi_rate_thresh.rssi_min_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set rssi_min_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_RSSI_MAX:
+		g_agent_obj.rssi_rate_thresh.rssi_max_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set rssi_max_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_ACKRSSI_MIN:
+		g_agent_obj.rssi_rate_thresh.ackrssi_min_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set ackrssi_min_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_ACKRSSI_MAX:
+		g_agent_obj.rssi_rate_thresh.ackrssi_max_threshold = (int32_t)value;
+		ta_print_debug("Agent > Set ackrssi_max_threshold: %d\n", (int32_t)value);
+		break;
+	case THRESHOLD_TXRATE_MIN:
+		g_agent_obj.rssi_rate_thresh.txrate_min_threshold = value;
+		ta_print_debug("Agent > Set txrate_min_threshold: %u\n", value);
+		break;
+	case THRESHOLD_TXRATE_MAX:
+		g_agent_obj.rssi_rate_thresh.txrate_max_threshold = value;
+		ta_print_debug("Agent > Set txrate_max_threshold: %u\n", value);
+		break;
+	case THRESHOLD_RXRATE_MIN:
+		g_agent_obj.rssi_rate_thresh.rxrate_min_threshold = value;
+		ta_print_debug("Agent > Set rxrate_min_threshold: %u\n", value);
+		break;
+	case THRESHOLD_RXRATE_MAX:
+		g_agent_obj.rssi_rate_thresh.rxrate_max_threshold = value;
+		ta_print_debug("Agent > Set rxrate_max_threshold: %u\n", value);
+		break;
+	default:
+		ta_print_error("Agent > Invalid threshold type: %u\n", type);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int telemetry_print_rssi_rate_thresholds(void)
+{
+	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
+	uint8_t enabled_mask = thresh->enabled_mask;
+
+	ta_print_info("========================================================================\n");
+	ta_print_info("                    RSSI/Rate Thresholds Status\n");
+	ta_print_info("========================================================================\n");
+	ta_print_info("%-20s | %-10s | %-10s\n",
+	       "Threshold Type", "Value", "Enabled");
+	ta_print_info("------------------------------------------------------------------------\n");
+	ta_print_info("%-20s | %-10d | %-10s\n",
+	       "RSSI Min",
+	       thresh->rssi_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RSSI_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s\n",
+	       "RSSI Max",
+	       thresh->rssi_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RSSI_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s\n",
+	       "ACK RSSI Min",
+	       thresh->ackrssi_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_ACKRSSI_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10d | %-10s\n",
+	       "ACK RSSI Max",
+	       thresh->ackrssi_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_ACKRSSI_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s\n",
+	       "TX Rate Min",
+	       thresh->txrate_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_TXRATE_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s\n",
+	       "TX Rate Max",
+	       thresh->txrate_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_TXRATE_MAX)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s\n",
+	       "RX Rate Min",
+	       thresh->rxrate_min_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RXRATE_MIN)) ? "Yes" : "No");
+	ta_print_info("%-20s | %-10u | %-10s\n",
+	       "RX Rate Max",
+	       thresh->rxrate_max_threshold,
+	       (enabled_mask & (1 << THRESHOLD_RXRATE_MAX)) ? "Yes" : "No");
+	ta_print_info("========================================================================\n");
+	ta_print_info("\n");
+	ta_print_info("Enabled Mask: %u\n", enabled_mask);
+	ta_print_info("Breach notification status is tracked per-peer.\n");
+
+	return 0;
+}
+
+static int telemetry_set_rssi_rate_breach_mask(uint8_t mask)
+{
+	g_agent_obj.rssi_rate_thresh.enabled_mask = mask;
+	ta_print_debug("Agent > Set breach mask: 0x%02X\n", mask);
+
+	return 0;
+}
+
+static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
+					      uint16_t peer_id,
+					      uint8_t *peer_mac,
+					      uint8_t breach_type,
+					      uint32_t threshold_value,
+					      uint32_t detected_value,
+					      bool set_clear)
+{
+	uint8_t breach_mask = psoc_db->breach_notified_mask[peer_id];
+	bool already_notified = breach_mask & (1 << breach_type);
+
+	if (already_notified == set_clear) {
+		return 0;
+	}
+
+	if (set_clear) {
+		psoc_db->breach_notified_mask[peer_id] |= (1 << breach_type);
+	} else {
+		psoc_db->breach_notified_mask[peer_id] &= ~(1 << breach_type);
+	}
+
+	if (g_agent_ops && g_agent_ops->agent_notify_rssi_rate_breach) {
+		g_agent_ops->agent_notify_rssi_rate_breach(peer_mac, breach_type,
+							    threshold_value,
+							    detected_value,
+							    set_clear);
+	}
+
+	return 0;
+}
+
+/**
+ * telemetry_update_rssi_rate_breach - Unified breach detection handler
+ * @soc_id: SOC ID
+ * @peer_id: Peer ID
+ * @peer_mac: Peer MAC address
+ * @path_type: PATH_TYPE_RX (0) or PATH_TYPE_TX (1)
+ * @rssi_value: RSSI (if path_type=0) or ACK RSSI (if path_type=1)
+ * @rate_value: RX rate (if path_type=0) or TX rate (if path_type=1)
+ */
+static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
+					     uint16_t peer_id,
+					     uint8_t *peer_mac,
+					     uint8_t path_type,
+					     int32_t rssi_value,
+					     uint32_t rate_value)
+{
+	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
+	struct agent_soc_db *psoc_db;
+	uint8_t enabled_mask = thresh->enabled_mask;
+	int32_t rssi_thresh;
+	uint32_t rate_thresh;
+	uint8_t breach_type;
+
+	if (!peer_mac) {
+		ta_print_error("Agent > peer_mac is NULL\n");
+		return -EINVAL;
+	}
+
+	if (peer_id >= ATH12K_MAX_PEER_ID) {
+		ta_print_error("Agent > Invalid peer_id: %u\n", peer_id);
+		return -EINVAL;
+	}
+
+	if (soc_id >= MAX_SOCS_DB) {
+		ta_print_error("Agent > Invalid soc_id: %u\n", soc_id);
+		return -EINVAL;
+	}
+
+	psoc_db = &g_agent_obj.agent_db.psoc_db[soc_id];
+	if (!psoc_db->psoc_obj_ptr) {
+		ta_print_error("Agent > SOC not initialized for soc_id: %u\n", soc_id);
+		return -EINVAL;
+	}
+
+	if (path_type == PATH_TYPE_RX) {
+		/* Check RSSI min threshold */
+		breach_type = BREACH_TYPE_RSSI_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->rssi_min_threshold;
+			if (rssi_value < rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check RSSI max threshold */
+		breach_type = BREACH_TYPE_RSSI_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->rssi_max_threshold;
+			if (rssi_value > rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check RX rate min threshold */
+		breach_type = BREACH_TYPE_RXRATE_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->rxrate_min_threshold;
+			if (rate_value < rate_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+		/* Check RX rate max threshold */
+		breach_type = BREACH_TYPE_RXRATE_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->rxrate_max_threshold;
+			if (rate_value > rate_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+	} else if (path_type == PATH_TYPE_TX) {
+		/* Check ACK RSSI min threshold */
+		breach_type = BREACH_TYPE_ACKRSSI_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->ackrssi_min_threshold;
+			if (rssi_value < rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check ACK RSSI max threshold */
+		breach_type = BREACH_TYPE_ACKRSSI_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rssi_thresh = thresh->ackrssi_max_threshold;
+			if (rssi_value > rssi_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   (uint32_t)rssi_thresh, (uint32_t)rssi_value, false);
+			}
+		}
+
+		/* Check TX rate min threshold */
+		breach_type = BREACH_TYPE_TXRATE_MIN;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->txrate_min_threshold;
+			if (rate_value < rate_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+
+		/* Check TX rate max threshold */
+		breach_type = BREACH_TYPE_TXRATE_MAX;
+		if (enabled_mask & (1 << breach_type)) {
+			rate_thresh = thresh->txrate_max_threshold;
+			if (rate_value > rate_thresh) {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, true);
+			} else {
+				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac, breach_type,
+								   rate_thresh, rate_value, false);
+			}
+		}
+	}
+
+	return 0;
+}
+
 struct telemetry_agent_ops agent_ops = {
 	agent_psoc_create_handler:telemetry_agent_psoc_create_handler,
 	agent_psoc_destroy_handler:telemetry_agent_psoc_destroy_handler,
@@ -2152,6 +2377,10 @@ struct telemetry_agent_ops agent_ops = {
 	sawf_reset_peer_stats: telemetry_sawf_reset_peer_stats,
 	sawf_set_sla_detect_config:telemetry_sawf_set_sla_detect_config,
 	sawf_set_sla_config: telemetry_sawf_set_sla_config,
+	agent_set_rssi_rate_threshold: telemetry_set_rssi_rate_threshold,
+	agent_print_rssi_rate_thresholds: telemetry_print_rssi_rate_thresholds,
+	agent_set_rssi_rate_breach_mask: telemetry_set_rssi_rate_breach_mask,
+	agent_update_rssi_rate_breach: telemetry_update_rssi_rate_breach,
 };
 
 static int telemetry_agent_init_module_basic(void)
