@@ -199,6 +199,8 @@ struct agent_rssi_rate_thresholds {
 	uint32_t rxrate_min_threshold;
 	uint32_t rxrate_max_threshold;
 	uint8_t enabled_mask;
+	uint32_t rssi_hysteresis;
+	uint32_t rate_hysteresis;
 };
 
 struct telemetry_agent_object {
