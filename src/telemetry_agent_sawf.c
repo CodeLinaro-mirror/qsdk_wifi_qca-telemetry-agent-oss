@@ -872,7 +872,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint64_t in_rate = 0, eg_rate = 0;
 	uint64_t throughput;
 	uint32_t threshold;
-	struct telemetry_msduq_tx_stats msduq_tx_stats = {0};
+	struct telemetry_msduq_tx_stats *msduq_tx_stats;
 	uint8_t pkt_type_index, mcs_index;
 	uint8_t mcs_min_threshold;
 	uint8_t mcs_max_threshold;
@@ -889,6 +889,13 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		pr_sawf_err("SAWF ctx is null");
 		return -1;
 	}
+
+	msduq_tx_stats = kzalloc(sizeof(*msduq_tx_stats), GFP_ATOMIC);
+	if (!msduq_tx_stats) {
+		pr_sawf_err("Out of Memory");
+		return -ENOMEM;
+	}
+
 	svc_param = &sawf_ctx->svc_class.svc_class[svc_id - 1];
 	sla_param = &sawf_ctx->sla.sla_cfg[svc_id - 1];
 	sla_detect = &sawf_ctx->sla_detect.
@@ -909,26 +916,26 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	sawf_tx_stats = &peer->stats[queue].tx;
 
 	telemetry_sawf_get_msduq_tx_stats(peer,
-				 &msduq_tx_stats,
+				 msduq_tx_stats,
 				 queue);
 
-	curr_tx_failed = msduq_tx_stats.tx_failed - sawf_tx_stats->retries_mcs_stats.tx_failed;
+	curr_tx_failed = msduq_tx_stats->tx_failed - sawf_tx_stats->retries_mcs_stats.tx_failed;
 	curr_tx_count = tx_cnt - tput->last_count;
-	last_total_retries_count = msduq_tx_stats.total_retries_count -
+	last_total_retries_count = msduq_tx_stats->total_retries_count -
 				   sawf_tx_stats->retries_mcs_stats.total_retries_count;
-	last_retry_count = msduq_tx_stats.retry_count -
+	last_retry_count = msduq_tx_stats->retry_count -
 			   sawf_tx_stats->retries_mcs_stats.retry_count;
 	tput->last_count = tx_cnt;
 	for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
 		for (mcs_index = 0; mcs_index < TELEMETRY_MAX_MCS; mcs_index++) {
 			last_packet_type_mcs[pkt_type_index].mcs_count[mcs_index] =
-			msduq_tx_stats.packet_type[pkt_type_index].mcs_count[mcs_index] -
+			msduq_tx_stats->packet_type[pkt_type_index].mcs_count[mcs_index] -
 			sawf_tx_stats->retries_mcs_stats.packet_type[pkt_type_index].mcs_count[mcs_index];
 		}
 	}
 
 	telemetry_compute_tx_stats(sawf_tx_stats,
-				   &msduq_tx_stats,
+				   msduq_tx_stats,
 				   tx_cnt, eg_rate);
 
 	sawf_tx_stats->per_retries_stats.packet_error_rate =
@@ -938,8 +945,10 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		div_u64((last_retry_count * 100),
 			curr_tx_count);
 
-	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids))
+	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
+		kfree(msduq_tx_stats);
 		return 0;
+	}
 
 	threshold = sla_param->min_thruput_rate;
 	if (threshold && sla_detect->min_thruput_rate) {
@@ -1058,6 +1067,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		}
 	}
 
+	kfree(msduq_tx_stats);
 	return 0;
 }
 
