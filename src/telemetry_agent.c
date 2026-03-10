@@ -2156,6 +2156,35 @@ static int telemetry_set_rssi_rate_breach_mask(uint8_t mask)
 	return 0;
 }
 
+static int telemetry_get_rssi_rate_threshold(uint8_t type)
+{
+	switch (type) {
+	case THRESHOLD_RSSI_MIN:
+		return g_agent_obj.rssi_rate_thresh.rssi_min_threshold;
+	case THRESHOLD_RSSI_MAX:
+		return g_agent_obj.rssi_rate_thresh.rssi_max_threshold;
+	case THRESHOLD_ACKRSSI_MIN:
+		return g_agent_obj.rssi_rate_thresh.ackrssi_min_threshold;
+	case THRESHOLD_ACKRSSI_MAX:
+		return g_agent_obj.rssi_rate_thresh.ackrssi_max_threshold;
+	case THRESHOLD_TXRATE_MIN:
+		return g_agent_obj.rssi_rate_thresh.txrate_min_threshold;
+	case THRESHOLD_TXRATE_MAX:
+		return g_agent_obj.rssi_rate_thresh.txrate_max_threshold;
+	case THRESHOLD_RXRATE_MIN:
+		return g_agent_obj.rssi_rate_thresh.rxrate_min_threshold;
+	case THRESHOLD_RXRATE_MAX:
+		return g_agent_obj.rssi_rate_thresh.rxrate_max_threshold;
+	default:
+		return 0;
+	}
+}
+
+static uint8_t telemetry_get_rssi_rate_breach_mask(void)
+{
+	return g_agent_obj.rssi_rate_thresh.enabled_mask;
+}
+
 static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
 					      uint16_t peer_id,
 					      uint8_t *peer_mac,
@@ -2380,6 +2409,8 @@ struct telemetry_agent_ops agent_ops = {
 	agent_set_rssi_rate_threshold: telemetry_set_rssi_rate_threshold,
 	agent_print_rssi_rate_thresholds: telemetry_print_rssi_rate_thresholds,
 	agent_set_rssi_rate_breach_mask: telemetry_set_rssi_rate_breach_mask,
+	agent_get_rssi_rate_threshold: telemetry_get_rssi_rate_threshold,
+	agent_get_rssi_rate_breach_mask: telemetry_get_rssi_rate_breach_mask,
 	agent_update_rssi_rate_breach: telemetry_update_rssi_rate_breach,
 };
 
