@@ -1817,6 +1817,7 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 {
 	int status = STATUS_SUCCESS;
 	struct agent_soc_db *psoc_db = NULL;
+	uint16_t peer_id;
 
 	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
@@ -1825,10 +1826,12 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 	psoc_db = &g_agent_obj.agent_db.psoc_db[psoc_obj->psoc_id];
 	psoc_db->psoc_obj_ptr = NULL;
 	psoc_db->num_pdevs = 0;
-	memset(psoc_db->breach_notified_mask, 0,
-	       sizeof(psoc_db->breach_notified_mask));
 	g_agent_obj.agent_db.num_socs--;
 	spin_unlock_bh(&g_agent_obj.agent_lock);
+
+	for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
+		WRITE_ONCE(psoc_db->breach_notified_mask[peer_id], 0);
+	}
 
 	return status;
 }
@@ -1899,7 +1902,7 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		}
 
 	if (node_remove && peer_db_remove) {
-		psoc_db->breach_notified_mask[peer_db_remove->peer_id] = 0;
+		WRITE_ONCE(psoc_db->breach_notified_mask[peer_db_remove->peer_id], 0);
 		list_del(node);
 		kfree(peer_db_remove);
 	} else {
@@ -2148,10 +2151,36 @@ static int telemetry_print_rssi_rate_thresholds(void)
 	return 0;
 }
 
-static int telemetry_set_rssi_rate_breach_mask(uint8_t mask)
+static int telemetry_set_rssi_rate_breach_mask(uint8_t new_mask)
 {
-	g_agent_obj.rssi_rate_thresh.enabled_mask = mask;
-	ta_print_debug("Agent > Set breach mask: 0x%02X\n", mask);
+	uint8_t old_mask = g_agent_obj.rssi_rate_thresh.enabled_mask;
+	uint8_t disabled_bits = old_mask & ~new_mask;
+	int i, bit;
+	uint16_t peer_id;
+	struct agent_soc_db *psoc_db;
+
+	g_agent_obj.rssi_rate_thresh.enabled_mask = new_mask;
+
+	if (!disabled_bits) {
+		ta_print_debug("Agent > Set breach mask: 0x%02X (no bits disabled)\n", new_mask);
+		return 0;
+	}
+
+	for (i = 0; i < MAX_SOCS_DB; i++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
+		if (!psoc_db->psoc_obj_ptr)
+			continue;
+
+		for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
+			for (bit = 0; bit < BREACH_TYPE_MAX; bit++) {
+				if (disabled_bits & (1 << bit))
+					clear_bit(bit, &psoc_db->breach_notified_mask[peer_id]);
+			}
+		}
+	}
+
+	ta_print_debug("Agent > Set breach mask: 0x%02X (cleared bits 0x%02X from all peers)\n", 
+	               new_mask, disabled_bits);
 
 	return 0;
 }
@@ -2193,17 +2222,16 @@ static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
 					      uint32_t detected_value,
 					      bool set_clear)
 {
-	uint8_t breach_mask = psoc_db->breach_notified_mask[peer_id];
-	bool already_notified = breach_mask & (1 << breach_type);
+	bool already_notified = test_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
 
 	if (already_notified == set_clear) {
 		return 0;
 	}
 
 	if (set_clear) {
-		psoc_db->breach_notified_mask[peer_id] |= (1 << breach_type);
+		set_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
 	} else {
-		psoc_db->breach_notified_mask[peer_id] &= ~(1 << breach_type);
+		clear_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
 	}
 
 	if (g_agent_ops && g_agent_ops->agent_notify_rssi_rate_breach) {

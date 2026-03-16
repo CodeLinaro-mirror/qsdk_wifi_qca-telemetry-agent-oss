@@ -133,7 +133,7 @@ struct agent_soc_db {
 	uint8_t soc_id;
 	uint8_t num_pdevs;
 	struct agent_pdev_db pdev_db[MAX_PDEV_LINKS_DB];
-	uint8_t breach_notified_mask[ATH12K_MAX_PEER_ID];
+	unsigned long breach_notified_mask[ATH12K_MAX_PEER_ID];
 };
 
 struct agent_telemtry_db {
