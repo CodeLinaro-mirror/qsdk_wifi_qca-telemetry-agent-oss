@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, 2026 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1902,13 +1902,17 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		}
 
 	if (node_remove && peer_db_remove) {
-		WRITE_ONCE(psoc_db->breach_notified_mask[peer_db_remove->peer_id], 0);
-		list_del(node);
+		if (peer_db_remove->peer_id < ATH12K_MAX_PEER_ID)
+			WRITE_ONCE(psoc_db->breach_notified_mask[peer_db_remove->peer_id], 0);
+		else
+			ta_print_debug("%s: Invalid peer_id %u, skipping breach mask clear\n",
+				       __func__, peer_db_remove->peer_id);
+		list_del(node_remove);
 		kfree(peer_db_remove);
+		pdev_db->num_peers--;
 	} else {
 		ta_print_error("%s: Node not found\n", __func__);
 	}
-	pdev_db->num_peers--;
 
 	spin_unlock_bh(&pdev_db->peer_db_lock);
 	spin_unlock_bh(&g_agent_obj.agent_lock);
@@ -2179,7 +2183,7 @@ static int telemetry_set_rssi_rate_breach_mask(uint8_t new_mask)
 		}
 	}
 
-	ta_print_debug("Agent > Set breach mask: 0x%02X (cleared bits 0x%02X from all peers)\n", 
+	ta_print_debug("Agent > Set breach mask: 0x%02X (cleared bits 0x%02X from all peers)\n",
 	               new_mask, disabled_bits);
 
 	return 0;
