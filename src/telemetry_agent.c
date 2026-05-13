@@ -494,7 +494,8 @@ void telemetry_agent_stats_work_periodic_pmlo(struct work_struct *work)
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
 				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
-										peer_db->psoc_obj_ptr, &peer_stats)))
+									peer_db->psoc_obj_ptr,
+									peer_db->hw_link_id, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_mlo_peers];
@@ -951,12 +952,14 @@ void telemetry_agent_stats_work_periodic_energysvc(struct work_struct *work)
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
 				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
-										peer_db->psoc_obj_ptr, &peer_stats)) &&
+									peer_db->psoc_obj_ptr,
+									peer_db->hw_link_id, &peer_stats)) &&
 				    !(g_agent_ops->agent_get_emesh_peer_stats(peer_db->peer_obj_ptr, &peer_stats_tx)))
 #else
 				if ((peer_db) && (peer_db->peer_obj_ptr) &&
 				    !(g_agent_ops->agent_get_peer_stats(peer_db->peer_id,
-										peer_db->psoc_obj_ptr, &peer_stats)))
+									peer_db->psoc_obj_ptr,
+									 peer_db->hw_link_id, &peer_stats)))
 #endif
 				{
 					rfs_peer_stats = &rfs_link_stats->peer_stats[num_peers];
@@ -1779,6 +1782,7 @@ static int  telemetry_agent_peer_create_handler(void *arg, struct agent_peer_obj
 	peer_db->pdev_obj_ptr = peer_obj->pdev_back_pointer;
 	peer_db->peer_obj_ptr = peer_obj->peer_back_pointer;
 	peer_db->peer_id = peer_obj->peer_id;
+	peer_db->hw_link_id = peer_obj->hw_link_id;
 	memcpy(&peer_db->peer_mac_addr[0], &peer_obj->peer_mac_addr[0], 6);
 	spin_lock_bh(&pdev_db->peer_db_lock);
 	list_add_tail(&peer_db->node, &pdev_db->peer_db_list);
