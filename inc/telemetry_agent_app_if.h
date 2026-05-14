@@ -451,4 +451,6 @@ enum rm_services {
 	RM_MAX_SERVICE,
 };
 
+#define RM_IFLI_PROXY_SERVICE RM_QOS_OPTIMIZER_SERVICE
+
 #endif /* __TELEMETRY_AGENT_APP_IF_H__ */
