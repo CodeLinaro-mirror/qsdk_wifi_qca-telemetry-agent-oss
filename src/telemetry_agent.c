@@ -961,8 +961,8 @@ void telemetry_compute_peer_tx_stats(struct agent_peer_db *peer_db,
 
 void telemetry_extract_and_detect_peer_breach(struct agent_peer_db *peer_db)
 {
-	struct agent_peer_tx_ext_stats raw_peer_stats = {0};
-	struct telemetry_pkt_type curr_mcs_packet_type[TELEMETRY_DOT11_MAX] = {0};
+	struct agent_peer_tx_ext_stats *raw_peer_stats;
+	struct telemetry_pkt_type *curr_mcs_packet_type;
 	uint8_t pkt_type_index, mcs_index;
 	uint32_t threshold;
 	bool mcs_breach = false;
@@ -971,14 +971,24 @@ void telemetry_extract_and_detect_peer_breach(struct agent_peer_db *peer_db)
 	uint32_t min_thruput_rate;
 	uint32_t max_thruput_rate;
 
-	telemtry_get_telemetry_tx_peer_stats(peer_db, &raw_peer_stats);
+	raw_peer_stats = kzalloc(sizeof(*raw_peer_stats), GFP_ATOMIC);
+	if (!raw_peer_stats)
+		return;
 
-	telemetry_compute_peer_tx_stats(peer_db, &raw_peer_stats);
+	curr_mcs_packet_type = kzalloc(sizeof(*curr_mcs_packet_type) * TELEMETRY_DOT11_MAX, GFP_ATOMIC);
+	if (!curr_mcs_packet_type) {
+		kfree(raw_peer_stats);
+		return;
+	}
+
+	telemtry_get_telemetry_tx_peer_stats(peer_db, raw_peer_stats);
+
+	telemetry_compute_peer_tx_stats(peer_db, raw_peer_stats);
 
 	for (pkt_type_index = 0; pkt_type_index < TELEMETRY_DOT11_MAX; pkt_type_index++) {
 		for (mcs_index = 0; mcs_index < TELEMETRY_MAX_MCS; mcs_index++) {
 			curr_mcs_packet_type[pkt_type_index].mcs_count[mcs_index] =
-			raw_peer_stats.packet_type[pkt_type_index].mcs_count[mcs_index] -
+			raw_peer_stats->packet_type[pkt_type_index].mcs_count[mcs_index] -
 			peer_db->peer_stats.raw_peer_stats.packet_type[pkt_type_index].mcs_count[mcs_index];
 		}
 	}
@@ -1069,6 +1079,8 @@ void telemetry_extract_and_detect_peer_breach(struct agent_peer_db *peer_db)
 		}
 	}
 
+	kfree(curr_mcs_packet_type);
+	kfree(raw_peer_stats);
 	return;
 }
 

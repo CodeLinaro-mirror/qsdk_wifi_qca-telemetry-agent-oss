@@ -881,7 +881,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	uint32_t curr_tx_failed;
 	uint32_t curr_tx_count;
 	uint32_t last_total_retries_count;
-	struct telemetry_pkt_type last_packet_type_mcs[TELEMETRY_DOT11_MAX] = {0};
+	struct telemetry_pkt_type *last_packet_type_mcs;
 	uint32_t last_retry_count;
 
 	sawf_ctx = telemetry_sawf_get_ctx();
@@ -893,6 +893,14 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 	msduq_tx_stats = kzalloc(sizeof(*msduq_tx_stats), GFP_ATOMIC);
 	if (!msduq_tx_stats) {
 		pr_sawf_err("Out of Memory");
+		return -ENOMEM;
+	}
+
+	last_packet_type_mcs = kzalloc(sizeof(*last_packet_type_mcs) * TELEMETRY_DOT11_MAX,
+				       GFP_ATOMIC);
+	if (!last_packet_type_mcs) {
+		pr_sawf_err("Out of Memory");
+		kfree(msduq_tx_stats);
 		return -ENOMEM;
 	}
 
@@ -946,6 +954,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 			curr_tx_count);
 
 	if (!test_bit(svc_id, sawf_ctx->sla.sla_service_ids)) {
+		kfree(last_packet_type_mcs);
 		kfree(msduq_tx_stats);
 		return 0;
 	}
@@ -1067,6 +1076,7 @@ telemetry_detect_breach_peer_per_sec(struct telemetry_sawf_peer_ctx *peer,
 		}
 	}
 
+	kfree(last_packet_type_mcs);
 	kfree(msduq_tx_stats);
 	return 0;
 }
