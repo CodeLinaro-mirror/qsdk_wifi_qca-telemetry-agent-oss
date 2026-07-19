@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: ISC
  */
 
+#include <linux/version.h>
 #include "../inc/telemetry_agent.h"
 #include "../inc/telemetry_agent_sawf.h"
 #include <telemetry_agent_wifi_driver_if.h>
@@ -1150,7 +1151,11 @@ bool telemetry_get_pext_stats_config(struct agent_soc_db *soc_db)
 void telemetry_peer_stats_timer_stop(void)
 {
 	if (g_agent_obj.peer_stats_timer_enabled) {
-		del_timer_sync(&g_agent_obj.peer_stats_timer);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+                timer_delete_sync(&g_agent_obj.peer_stats_timer);
+#else
+                del_timer_sync(&g_agent_obj.peer_stats_timer);
+#endif
 		g_agent_obj.peer_stats_timer_enabled = false;
 	}
 }

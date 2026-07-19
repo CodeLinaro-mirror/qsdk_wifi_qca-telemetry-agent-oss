@@ -15,6 +15,7 @@
  */
 
 #include "../inc/telemetry_agent_sawf.h"
+#include <linux/version.h>
 
 extern struct telemetry_agent_ops *g_agent_ops;
 struct telemetry_sawf_ctx *g_telemetry_sawf;
@@ -1591,8 +1592,13 @@ int telemetry_sawf_free_sla_timer(void)
 		return -1;
 	}
 
-	del_timer(&sawf_ctx->per_sec_timer);
-	del_timer(&sawf_ctx->num_sec_timer);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+        timer_delete(&sawf_ctx->per_sec_timer);
+        timer_delete(&sawf_ctx->num_sec_timer);
+#else
+        del_timer(&sawf_ctx->per_sec_timer);
+        del_timer(&sawf_ctx->num_sec_timer);
+#endif
 
 	return 0;
 }
@@ -1601,7 +1607,11 @@ void telemetry_detect_sla_per_sec(struct timer_list *timer)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_sla_param *sla_detect;
-	sawf_ctx = from_timer(sawf_ctx, timer, per_sec_timer);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+        sawf_ctx = container_of(timer, typeof(*sawf_ctx), per_sec_timer);
+#else
+        sawf_ctx = from_timer(sawf_ctx, timer, per_sec_timer);
+#endif
 
 	if (!sawf_ctx) {
 		pr_sawf_err("SAWF ctx is null");
@@ -1623,7 +1633,11 @@ void telemetry_detect_sla_num_sec(struct timer_list *timer)
 {
 	struct telemetry_sawf_ctx *sawf_ctx;
 	struct telemetry_sawf_sla_param *sla_detect;
-	sawf_ctx = from_timer(sawf_ctx, timer, num_sec_timer);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+        sawf_ctx = container_of(timer, typeof(*sawf_ctx), num_sec_timer);
+#else
+        sawf_ctx = from_timer(sawf_ctx, timer, num_sec_timer);
+#endif
 
 	if (!sawf_ctx) {
 		pr_sawf_err("SAWF ctx is null");
