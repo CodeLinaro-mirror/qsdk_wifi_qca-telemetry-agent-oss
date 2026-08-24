@@ -69,6 +69,24 @@ agent and APP */
     }                    \
 } while (0)
 
+/* Breach type enums for NL event */
+enum telemetry_breach_type {
+	BREACH_TYPE_RSSI_MIN = 0,
+	BREACH_TYPE_RSSI_MAX = 1,
+	BREACH_TYPE_ACKRSSI_MIN = 2,
+	BREACH_TYPE_ACKRSSI_MAX = 3,
+	BREACH_TYPE_TXRATE_MIN = 4,
+	BREACH_TYPE_TXRATE_MAX = 5,
+	BREACH_TYPE_RXRATE_MIN = 6,
+	BREACH_TYPE_RXRATE_MAX = 7,
+	BREACH_TYPE_MAX,
+};
+
+/* calculate bit index in breach_notified_mask bitmap */
+#define BREACH_BIT_INDEX(peer_id, breach_type) \
+	((peer_id) * BREACH_TYPE_MAX + (breach_type))
+
+
 struct agent_derived_peer_stats {
 	uint32_t eg_rate;
 	uint32_t min_throughput;
@@ -126,6 +144,7 @@ struct agent_pdev_db {
 	int num_peers;
 	spinlock_t peer_db_lock;
 	struct list_head peer_db_list;
+	DECLARE_BITMAP(breach_notified_mask, ATH12K_MAX_PEER_ID * BREACH_TYPE_MAX);
 	// struct deter_peer_iface_stats_obj peer_stats;
 };
 
@@ -134,7 +153,6 @@ struct agent_soc_db {
 	uint8_t soc_id;
 	uint8_t num_pdevs;
 	struct agent_pdev_db pdev_db[MAX_PDEV_LINKS_DB];
-	unsigned long breach_notified_mask[ATH12K_MAX_PEER_ID];
 };
 
 struct agent_telemtry_db {
@@ -223,19 +241,6 @@ struct telemetry_agent_object {
 	struct timer_list peer_stats_timer;
 	bool peer_stats_timer_enabled;
 	struct agent_rssi_rate_thresholds rssi_rate_thresh;
-};
-
-/* Breach type enums for NL event */
-enum telemetry_breach_type {
-	BREACH_TYPE_RSSI_MIN = 0,
-	BREACH_TYPE_RSSI_MAX = 1,
-	BREACH_TYPE_ACKRSSI_MIN = 2,
-	BREACH_TYPE_ACKRSSI_MAX = 3,
-	BREACH_TYPE_TXRATE_MIN = 4,
-	BREACH_TYPE_TXRATE_MAX = 5,
-	BREACH_TYPE_RXRATE_MIN = 6,
-	BREACH_TYPE_RXRATE_MAX = 7,
-	BREACH_TYPE_MAX,
 };
 
 extern int register_telemetry_agent_ops(struct telemetry_agent_ops *agent_ops);

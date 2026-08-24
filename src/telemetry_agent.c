@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: ISC
  */
 
+#include <linux/version.h>
 #include "../inc/telemetry_agent.h"
 #include "../inc/telemetry_agent_sawf.h"
 #include <telemetry_agent_wifi_driver_if.h>
@@ -1150,7 +1151,11 @@ bool telemetry_get_pext_stats_config(struct agent_soc_db *soc_db)
 void telemetry_peer_stats_timer_stop(void)
 {
 	if (g_agent_obj.peer_stats_timer_enabled) {
-		del_timer_sync(&g_agent_obj.peer_stats_timer);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+                timer_delete_sync(&g_agent_obj.peer_stats_timer);
+#else
+                del_timer_sync(&g_agent_obj.peer_stats_timer);
+#endif
 		g_agent_obj.peer_stats_timer_enabled = false;
 	}
 }
@@ -1220,7 +1225,6 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 {
 	int status = STATUS_SUCCESS;
 	struct agent_soc_db *psoc_db = NULL;
-	uint16_t peer_id;
 
 	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d\n",__func__,
 			psoc_obj->psoc_back_pointer, psoc_obj->psoc_id);
@@ -1232,10 +1236,6 @@ static int telemetry_agent_psoc_destroy_handler(void *arg, struct agent_psoc_obj
 	g_agent_obj.agent_db.num_socs--;
 	spin_unlock_bh(&g_agent_obj.agent_lock);
 
-	for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
-		WRITE_ONCE(psoc_db->breach_notified_mask[peer_id], 0);
-	}
-
 	return status;
 }
 
@@ -1245,6 +1245,8 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 	int status = STATUS_SUCCESS;
 	struct agent_soc_db *psoc_db = NULL;
 	struct agent_pdev_db *pdev_db = NULL;
+	int i, bit_type, bit_idx;
+	uint16_t peer_id;
 
 	ta_print_debug("Agent> %s: psoc: %p psoc_id: %d pdev: %p pdev_id: %d \n",__func__,
 			pdev_obj->psoc_back_pointer, pdev_obj->psoc_id,
@@ -1253,6 +1255,15 @@ static int telemetry_agent_pdev_destroy_handler(void *arg, struct agent_pdev_obj
 	spin_lock_bh(&g_agent_obj.agent_lock);
 	psoc_db = &g_agent_obj.agent_db.psoc_db[pdev_obj->psoc_id];
 	pdev_db = &psoc_db->pdev_db[pdev_obj->pdev_id];
+
+	/* Clear all breach notification bits for this PDEV */
+	for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
+		for (bit_type = 0; bit_type < BREACH_TYPE_MAX; bit_type++) {
+			bit_idx = BREACH_BIT_INDEX(peer_id, bit_type);
+			clear_bit(bit_idx, pdev_db->breach_notified_mask);
+		}
+	}
+
 	pdev_db->psoc_obj_ptr = NULL;
 	pdev_db->pdev_obj_ptr = NULL;
 	psoc_db->num_pdevs--;
@@ -1270,6 +1281,7 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 	struct list_head *node_remove = NULL;
 	struct agent_peer_db *peer_db = NULL;
 	struct agent_peer_db *peer_db_remove = NULL;
+	int i, bit_idx;
 
 	spin_lock_bh(&g_agent_obj.agent_lock);
 	psoc_db = &g_agent_obj.agent_db.psoc_db[peer_obj->psoc_id];
@@ -1305,11 +1317,15 @@ static int  telemetry_agent_peer_destroy_handler(void *arg, struct agent_peer_ob
 		}
 
 	if (node_remove && peer_db_remove) {
-		if (peer_db_remove->peer_id < ATH12K_MAX_PEER_ID)
-			WRITE_ONCE(psoc_db->breach_notified_mask[peer_db_remove->peer_id], 0);
-		else
+		if (peer_db_remove->peer_id < ATH12K_MAX_PEER_ID) {
+			for (i = 0; i < BREACH_TYPE_MAX; i++) {
+				bit_idx = BREACH_BIT_INDEX(peer_db_remove->peer_id, i);
+				clear_bit(bit_idx, pdev_db->breach_notified_mask);
+			}
+		} else {
 			ta_print_debug("%s: Invalid peer_id %u, skipping breach mask clear\n",
 				       __func__, peer_db_remove->peer_id);
+		}
 		list_del(node_remove);
 		kfree(peer_db_remove);
 		pdev_db->num_peers--;
@@ -1562,9 +1578,10 @@ static int telemetry_set_rssi_rate_breach_mask(uint8_t new_mask)
 {
 	uint8_t old_mask = g_agent_obj.rssi_rate_thresh.enabled_mask;
 	uint8_t disabled_bits = old_mask & ~new_mask;
-	int i, bit;
+	int soc_idx, pdev_idx, bit_type, bit_idx;
 	uint16_t peer_id;
 	struct agent_soc_db *psoc_db;
+	struct agent_pdev_db *pdev_db;
 
 	g_agent_obj.rssi_rate_thresh.enabled_mask = new_mask;
 
@@ -1573,15 +1590,24 @@ static int telemetry_set_rssi_rate_breach_mask(uint8_t new_mask)
 		return 0;
 	}
 
-	for (i = 0; i < MAX_SOCS_DB; i++) {
-		psoc_db = &g_agent_obj.agent_db.psoc_db[i];
+	/* Clear notification bits for disabled breach types across all PDevs */
+	for (soc_idx = 0; soc_idx < MAX_SOCS_DB; soc_idx++) {
+		psoc_db = &g_agent_obj.agent_db.psoc_db[soc_idx];
 		if (!psoc_db->psoc_obj_ptr)
 			continue;
 
-		for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
-			for (bit = 0; bit < BREACH_TYPE_MAX; bit++) {
-				if (disabled_bits & (1 << bit))
-					clear_bit(bit, &psoc_db->breach_notified_mask[peer_id]);
+		for (pdev_idx = 0; pdev_idx < MAX_PDEV_LINKS_DB; pdev_idx++) {
+			pdev_db = &psoc_db->pdev_db[pdev_idx];
+			if (!pdev_db->pdev_obj_ptr)
+				continue;
+
+			for (peer_id = 0; peer_id < ATH12K_MAX_PEER_ID; peer_id++) {
+				for (bit_type = 0; bit_type < BREACH_TYPE_MAX; bit_type++) {
+					if (disabled_bits & (1 << bit_type)) {
+						bit_idx = BREACH_BIT_INDEX(peer_id, bit_type);
+						clear_bit(bit_idx, pdev_db->breach_notified_mask);
+					}
+				}
 			}
 		}
 	}
@@ -1687,7 +1713,7 @@ static inline void calculate_rate_band(uint32_t threshold, uint32_t hysteresis,
 	}
 }
 
-static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
+static int telemetry_notify_rssi_rate_breach(struct agent_pdev_db *pdev_db,
 					      uint16_t peer_id,
 					      uint8_t *peer_mac,
 					      uint8_t breach_type,
@@ -1695,16 +1721,17 @@ static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
 					      uint32_t detected_value,
 					      bool set_clear)
 {
-	bool already_notified = test_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
+	int bit_idx = BREACH_BIT_INDEX(peer_id, breach_type);
+	bool already_notified = test_bit(bit_idx, pdev_db->breach_notified_mask);
 
 	if (already_notified == set_clear) {
 		return 0;
 	}
 
 	if (set_clear) {
-		set_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
+		set_bit(bit_idx, pdev_db->breach_notified_mask);
 	} else {
-		clear_bit(breach_type, &psoc_db->breach_notified_mask[peer_id]);
+		clear_bit(bit_idx, pdev_db->breach_notified_mask);
 	}
 
 	if (g_agent_ops && g_agent_ops->agent_notify_rssi_rate_breach) {
@@ -1720,6 +1747,7 @@ static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
 /**
  * telemetry_update_rssi_rate_breach - Unified breach detection handler
  * @soc_id: SOC ID
+ * @pdev_id: PDEV ID
  * @peer_id: Peer ID
  * @peer_mac: Peer MAC address
  * @path_type: PATH_TYPE_RX (0) or PATH_TYPE_TX (1)
@@ -1727,6 +1755,7 @@ static int telemetry_notify_rssi_rate_breach(struct agent_soc_db *psoc_db,
  * @rate_value: RX rate (if path_type=0) or TX rate (if path_type=1)
  */
 static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
+					     uint8_t pdev_id,
 					     uint16_t peer_id,
 					     uint8_t *peer_mac,
 					     uint8_t path_type,
@@ -1735,6 +1764,7 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 {
 	struct agent_rssi_rate_thresholds *thresh = &g_agent_obj.rssi_rate_thresh;
 	struct agent_soc_db *psoc_db;
+	struct agent_pdev_db *pdev_db;
 	uint8_t enabled_mask = thresh->enabled_mask;
 
 	uint32_t rssi_hyst = thresh->rssi_hysteresis;
@@ -1765,6 +1795,17 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 		return -EINVAL;
 	}
 
+	if (pdev_id >= MAX_PDEV_LINKS_DB) {
+		ta_print_error("Agent > Invalid pdev_id: %u\n", pdev_id);
+		return -EINVAL;
+	}
+
+	pdev_db = &psoc_db->pdev_db[pdev_id];
+	if (!pdev_db->pdev_obj_ptr) {
+		ta_print_error("Agent > PDEV not initialized for pdev_id: %u\n", pdev_id);
+		return -EINVAL;
+	}
+
 	if (path_type == PATH_TYPE_RX) {
 		/* RSSI Min */
 		breach_type = BREACH_TYPE_RSSI_MIN;
@@ -1773,12 +1814,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rssi_band(rssi_thresh, rssi_hyst, &rssi_lower, &rssi_upper);
 
 			if (rssi_value < rssi_lower) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, true);
 			} else if ((rssi_hyst == 0 && rssi_value >= rssi_upper) ||
 			           (rssi_hyst > 0 && rssi_value > rssi_upper)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, false);
 			}
@@ -1791,12 +1832,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rssi_band(rssi_thresh, rssi_hyst, &rssi_lower, &rssi_upper);
 
 			if (rssi_value > rssi_upper) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, true);
 			} else if ((rssi_hyst == 0 && rssi_value <= rssi_lower) ||
 			           (rssi_hyst > 0 && rssi_value < rssi_lower)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, false);
 			}
@@ -1809,12 +1850,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rate_band(rate_thresh, rate_hyst, &rate_lower, &rate_upper);
 
 			if (rate_value < rate_lower) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, true);
 			} else if ((rate_hyst == 0 && rate_value >= rate_upper) ||
 			           (rate_hyst > 0 && rate_value > rate_upper)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, false);
 			}
@@ -1827,12 +1868,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rate_band(rate_thresh, rate_hyst, &rate_lower, &rate_upper);
 
 			if (rate_value > rate_upper) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, true);
 			} else if ((rate_hyst == 0 && rate_value <= rate_lower) ||
 			           (rate_hyst > 0 && rate_value < rate_lower)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, false);
 			}
@@ -1846,12 +1887,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rssi_band(rssi_thresh, rssi_hyst, &rssi_lower, &rssi_upper);
 
 			if (rssi_value < rssi_lower) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, true);
 			} else if ((rssi_hyst == 0 && rssi_value >= rssi_upper) ||
 			           (rssi_hyst > 0 && rssi_value > rssi_upper)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, false);
 			}
@@ -1864,12 +1905,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rssi_band(rssi_thresh, rssi_hyst, &rssi_lower, &rssi_upper);
 
 			if (rssi_value > rssi_upper) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, true);
 			} else if ((rssi_hyst == 0 && rssi_value <= rssi_lower) ||
 			           (rssi_hyst > 0 && rssi_value < rssi_lower)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, (uint32_t)rssi_thresh,
 								   (uint32_t)rssi_value, false);
 			}
@@ -1882,12 +1923,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rate_band(rate_thresh, rate_hyst, &rate_lower, &rate_upper);
 
 			if (rate_value < rate_lower) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, true);
 			} else if ((rate_hyst == 0 && rate_value >= rate_upper) ||
 			           (rate_hyst > 0 && rate_value > rate_upper)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, false);
 			}
@@ -1900,12 +1941,12 @@ static int telemetry_update_rssi_rate_breach(uint8_t soc_id,
 			calculate_rate_band(rate_thresh, rate_hyst, &rate_lower, &rate_upper);
 
 			if (rate_value > rate_upper) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, true);
 			} else if ((rate_hyst == 0 && rate_value <= rate_lower) ||
 			           (rate_hyst > 0 && rate_value < rate_lower)) {
-				telemetry_notify_rssi_rate_breach(psoc_db, peer_id, peer_mac,
+				telemetry_notify_rssi_rate_breach(pdev_db, peer_id, peer_mac,
 								   breach_type, rate_thresh,
 								   rate_value, false);
 			}
